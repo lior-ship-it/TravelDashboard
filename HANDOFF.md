@@ -2,6 +2,7 @@
 
 **Date:** June 29, 2026  
 **Status:** WORKING  
+**Repo:** https://github.com/lior-ship-it/TravelDashboard  
 **Type:** Automated Jira Dashboard with Secure Tenant Links
 
 ---
@@ -20,6 +21,27 @@
 
 **Fix:** Added `customfield_10667` to FIELD_MAP and added ADF text-node extraction in `getField()`.
 
+### Filters Not Working (FIXED)
+**Root Cause:** `setupFilters()` was only called in the CSV upload path (`loadData()`), never in the API path (`loadDataFromAPI()`). Filter dropdowns were never populated and event listeners never attached.
+
+**Fix:** Changed `loadDataFromAPI()` to call `setupFilters()` (which populates dropdowns, attaches listeners, then calls `setQuickRange('last90')` → `applyFilters()` → `computeAndRender()`).
+
+### Save Dashboard Broken (FIXED)
+**Root Cause:** Saved HTML still had `<script src="/js/...">` tags pointing to the server. When opened from disk, these fail to load → `window.apiClient` is undefined → "API Client not loaded" error. Additionally, `DOMContentLoaded` always called `loadDataFromAPI()` without checking for embedded data.
+
+**Fix:**
+1. `DOMContentLoaded` now checks `if (allData.length > 0)` first — if data is embedded (saved file), renders immediately without API call
+2. `saveDashboard()` now fetches external JS module contents and inlines them as `<script>` blocks in the saved HTML — produces a fully self-contained file that works offline
+
+### Additional Fixes Applied
+- `parseDate` — handles DD/MM/YYYY and DD/Mon/YY formats (not just ISO)
+- `parseNum` — strips `%` character
+- `cleanCommentText` — strips `{}"\ ` characters and `done:` prefix
+- `FIELD_MAP.medicalRecordReviewed` — added `'Medical Record reviewed?'` alias
+- `resetFilters()` — truly resets (no longer re-applies 90-day range)
+- `TABLE_COLS._claimCategory` — handles arrays and deduplicates values
+- Removed 6 stale versioned JS files and all debug `console.log` statements
+
 ---
 
 ## What's Working
@@ -37,7 +59,10 @@
 - JSON string parsing for Jira API v3 select/dropdown fields
 - ADF (Atlassian Document Format) text extraction for rich-text fields
 - Close comments extracted and displayed
-- Filters, charts, KPIs, and table all functional
+- Filters populate and work (payer, provider, status, NPI, type of bill, date range)
+- Reset shows all data; date range buttons (30d, 90d, YTD) work
+- Save Dashboard produces self-contained offline HTML
+- Charts, KPIs, table pagination, sorting all functional
 
 ---
 
@@ -53,7 +78,7 @@ TravelDash/
 │   │   ├── services/
 │   │   │   ├── cache.service.js   # 4-hour cache
 │   │   │   ├── jira.service.js    # Jira API v3 integration
-│   │   │   └── token.service.js   # Secure token generation
+│   │   │   └── link.service.js    # Secure token generation
 │   │   ├── routes/
 │   │   │   ├── api.routes.js      # GET /api/data/:tenant/:token
 │   │   │   └── admin.routes.js    # Admin endpoints
@@ -63,17 +88,19 @@ TravelDash/
 │   │   └── bluespine.db           # SQLite (24 claims cached)
 │   └── package.json
 │
-└── frontend/
-    └── dashboard/
-        ├── index.html             # Main dashboard (inline script uses external modules)
-        ├── js/
-        │   ├── api.client.js              # API client (base)
-        │   ├── api.client.1782732316.js   # API client (loaded by HTML)
-        │   ├── data.processor.js          # Data processor (base)
-        │   ├── data.processor.1782732316.js # Data processor (loaded by HTML)
-        │   └── export.service.js          # CSV export
-        └── css/
-            └── dashboard.css
+├── frontend/
+│   └── dashboard/
+│       ├── index.html             # Main dashboard (inline script uses external modules)
+│       └── js/
+│           ├── api.client.js              # API client
+│           ├── api.client.1782732316.js   # API client (cache-busted, loaded by HTML)
+│           ├── data.processor.js          # Data processor
+│           ├── data.processor.1782732316.js # Data processor (cache-busted, loaded by HTML)
+│           └── export.service.js          # CSV export
+│
+├── HTMLSource/                     # Working manual reference version
+├── docs/                           # API, setup, deployment docs
+└── tools/                          # CLI utilities (generate-link, test-jira)
 ```
 
 ---
@@ -96,9 +123,9 @@ http://localhost:3000/harel/90ff3c4b30847a8336cb5447654972d6f4a64dd5c544eb37268d
 
 ## Environment Variables
 
-**File:** `backend/.env`
+**File:** `backend/.env` (not committed — see `backend/.env.example`)
 ```env
-JIRA_BASE_URL=https://bluespine.atlassian.net
+JIRA_HOST=bluespine.atlassian.net
 JIRA_API_TOKEN=<redacted>
 JIRA_EMAIL=<redacted>
 NODE_ENV=development
@@ -126,6 +153,12 @@ curl -s "http://localhost:3000/api/data/harel/90ff3c4b30847a8336cb5447654972d6f4
 lsof -i :3000
 ```
 
+### Push to GitHub
+```bash
+cd /Users/lior/Documents/TravelDash
+git push -u origin main
+```
+
 ---
 
 ## Technical Details
@@ -145,17 +178,29 @@ lsof -i :3000
 | Provider NPI | customfield_11562 | Plain string |
 | Patient ID | customfield_10303 | Plain string |
 | Type of Bill | customfield_11550 | JSON string with `.value` |
+| Medical Record Reviewed | customfield_11837 | JSON string with `.value` |
 | Public-Status-Description | customfield_10667 | ADF (Atlassian Document Format) |
 | Total Allowed | customfield_11552 | Number |
 | Total Overpayment | customfield_10699 | Number |
+| Tenant | customfield_10237 | Plain string |
+| External Key | customfield_10238 | Plain string |
 
 ### Data Processing Pipeline
 1. API returns raw claims with `customfield_*` keys
 2. `getField()` resolves aliases via `FIELD_MAP` → finds correct field
 3. JSON strings are parsed, `.value` extracted for select/dropdown fields
 4. ADF documents have text nodes recursively extracted
-5. `cleanCommentText()` handles `{"status":"description"}` format in comments
-6. `enrichRow()` builds computed fields (`_payer`, `_status`, `_comment`, etc.)
+5. `cleanCommentText()` strips Jira markup and extracts description from `{"status":"text"}` format
+6. `enrichRow()` builds computed fields (`_payer`, `_status`, `_comment`, `_typeOfBill`, etc.)
+7. `setupFilters()` populates dropdowns from unique enriched values
+8. `applyFilters()` filters by date range, payer, provider, status, NPI, overpayment, type of bill
+
+### Save Dashboard Flow
+1. `saveDashboard()` fetches `/js/*.js` module contents via `fetch()`
+2. Clones the DOM, replaces external `<script src>` with inline `<script>` blocks
+3. Embeds `allData` JSON into the inline script (replaces `let allData = [];`)
+4. Downloads as self-contained HTML (works offline, ~180KB)
+5. On load, `DOMContentLoaded` detects embedded data → renders without API call
 
 ### Cache Logic
 - **TTL:** 4 hours
@@ -195,9 +240,17 @@ lsof -i :3000
 - Identified JSON string issue, added parsing logic to external JS
 - Multiple cache-busting attempts — actual issue was inline function shadowing
 
-### Session 4 - Fix Applied (Current)
-- Identified real root cause: inline `getField()` and `enrichRow()` in HTML shadowing external versions
+### Session 4 - Full Fix & Feature Complete
+- Identified real root cause: inline `getField()` and `enrichRow()` shadowing external versions
 - Removed inline duplicates, external module now sole source of truth
 - Added `customfield_10667` to FIELD_MAP for close comments
 - Added ADF text extraction for rich-text Jira fields
-- Cleaned up old versioned files and debug logging
+- Fixed `setupFilters()` not being called in API path
+- Fixed `resetFilters()` re-applying 90-day range
+- Fixed `parseDate` to handle DD/MM/YYYY and DD/Mon/YY formats
+- Fixed `cleanCommentText` to strip Jira artifacts
+- Fixed `saveDashboard()` to produce self-contained offline HTML
+- Fixed `DOMContentLoaded` to detect embedded data in saved files
+- Added `_claimCategory` array/dedup handling in TABLE_COLS
+- Cleaned up old versioned files and all debug logging
+- Pushed to GitHub: https://github.com/lior-ship-it/TravelDashboard
