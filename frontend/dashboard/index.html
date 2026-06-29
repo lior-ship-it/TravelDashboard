@@ -1201,7 +1201,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   dashboardContent.classList.add('visible');
 
   if (typeof allData !== 'undefined' && allData.length > 0) {
-    // Saved file with embedded data — render immediately without API
+    // Saved file with embedded data — re-enrich to reconstitute Date objects from serialized strings
+    allData = allData.map(enrichRow).filter(Boolean);
     filteredData = [...allData];
     document.getElementById('last-updated').textContent = `${allData.length} claims · saved`;
     document.getElementById('count-num').textContent = allData.length;

@@ -22,8 +22,8 @@ const FIELD_MAP = {
   charges: ['Custom field (Total Charges)', 'customfield_11549'],
   tenant: ['Custom field (Tenant-Alias)', 'Tenant-Alias', 'customfield_10237'],
   typeOfBill: ['Type of Bill', 'Type of bill', 'customfield_11550'],
-  medicalRecordReviewed: ['Medical Record reviewed?', 'Medical Record Reviewed', 'Medical Record reviewed', 'Custom field (Medical Record Reviewed)', 'customfield_11837'],
-  claimCategory: ['Claim Category', 'Custom field (Claim Category)'],
+  medicalRecordReviewed: ['Medical Record reviewed?', 'Medical Record Reviewed', 'Medical Record reviewed', 'Custom field (Medical Record reviewed?)', 'Custom field (Medical Record Reviewed)', 'customfield_11667'],
+  claimCategory: ['Claim Category', 'Custom field (Claim Category)', 'customfield_11997'],
   publicStatus: ['Custom field (Public-Status)', 'Public-Status', 'customfield_10239'],
   publicStatusDesc: ['Public-Status-Description', 'Custom field (Public-Status-Description)', 'Custom field (Closure Summary )', 'Closure Summary', 'customfield_10667']
 };
@@ -60,6 +60,10 @@ function getField(row, fieldKey) {
         } catch (e) {
           // Not valid JSON, use as-is
         }
+      }
+      // Handle arrays of Jira option objects (multi-select fields like Claim Category)
+      if (Array.isArray(val) && val.length > 0 && val[0].value !== undefined) {
+        return val.map(item => item.value).join(', ');
       }
       // Handle Jira API v3 objects with .value property (like select/dropdown fields)
       if (typeof val === 'object' && val !== null && val.value !== undefined) {

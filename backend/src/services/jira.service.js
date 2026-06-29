@@ -142,8 +142,8 @@ function transformJiraIssue(issue) {
   if (fields.customfield_10057) row['Closed-At'] = fields.customfield_10057;
   if (fields.customfield_10058) row['External-Key'] = fields.customfield_10058;
   if (fields.customfield_10059) row['Type of Bill'] = fields.customfield_10059;
-  if (fields.customfield_10060) row['Medical Record reviewed'] = fields.customfield_10060;
-  if (fields.customfield_10061) row['Claim Category'] = fields.customfield_10061;
+  if (fields.customfield_11667) row['Medical Record reviewed?'] = fields.customfield_11667;
+  if (fields.customfield_11997) row['Claim Category'] = fields.customfield_11997;
   if (fields.customfield_10062) row['Public-Status'] = fields.customfield_10062;
   if (fields.customfield_10063) row['Closure Summary'] = fields.customfield_10063;
   if (fields.customfield_10064) row['Claim-ID'] = fields.customfield_10064;
