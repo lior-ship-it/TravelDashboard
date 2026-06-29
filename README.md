@@ -24,7 +24,14 @@ npm start
 
 **2. Generate Tenant Link**
 ```bash
-node tools/generate-link.js <tenant-name>
+cd backend
+node tools/generate-link.js TENANT_NAME
+```
+Available tenants: `test-pc`, `ds`, `harel`, `fnx`
+
+Example:
+```bash
+node tools/generate-link.js harel
 ```
 
 **3. Open Link**

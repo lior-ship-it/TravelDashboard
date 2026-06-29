@@ -107,17 +107,27 @@ TravelDash/
 
 ## Access Details
 
-### Dashboard URL
+### Tenant Links (all created 2026-06-29, expire 2026-09-27)
+
+| Tenant | Dashboard URL |
+|--------|--------------|
+| ds | `http://localhost:3000/ds/a529e7cd221ef5777cd24c61eb8a92d5ed79b5aa328ae839137edb67817d950a` |
+| harel | `http://localhost:3000/harel/90ff3c4b30847a8336cb5447654972d6f4a64dd5c544eb37268d63f8f89c58ea` |
+| test-pc | `http://localhost:3000/test-pc/7a245aa5ffa8f72b3562dfe657bdfc462fa10bc1494dec122a9323cdf6ad1b9b` |
+
+Full link directory: [docs/TENANT_LINKS.md](docs/TENANT_LINKS.md)
+
+### Generate New Link
+```bash
+cd backend
+node tools/generate-link.js TENANT_NAME
 ```
-http://localhost:3000/harel/90ff3c4b30847a8336cb5447654972d6f4a64dd5c544eb37268d63f8f89c58ea
-```
+Available tenants: `test-pc`, `ds`, `harel`, `fnx`
 
 ### Tenant Configuration
-- **Tenant:** harel
-- **Token:** 90ff3c4b30847a8336cb5447654972d6f4a64dd5c544eb37268d63f8f89c58ea
-- **Expires:** September 27, 2026 (90 days from creation)
 - **Jira Project:** CLAIM (ClaimsOps)
 - **Records:** 24 claims (no date filter)
+- **Link expiry:** 90 days from creation
 
 ---
 
