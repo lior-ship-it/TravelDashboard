@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bluespine &middot; Recoupment Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Dashboard modules loaded at end of body -->
+<style>
+  :root {
+    --navy-deep:    #070d22;
+    --navy:         #0c1535;
+    --navy-card:    #0f1a3d;
+    --navy-border:  rgba(255,255,255,0.08);
+    --gold:         #e8a020;
+    --gold-light:   #f5b83d;
+    --blue-acc:     #3d8ef0;
+    --text:         #ffffff;
+    --text-mid:     rgba(255,255,255,0.65);
+    --text-dim:     rgba(255,255,255,0.35);
+    --green:        #22d3a5;
+    --red:          #f05a5a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--navy-deep);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse 140% 55% at 50% 115%, rgba(20,50,160,0.5) 0%, transparent 65%),
+      radial-gradient(ellipse 70% 35% at 50% 110%, rgba(61,142,240,0.12) 0%, transparent 55%);
+    background-attachment: fixed;
+  }
+  /* HEADER */
+  header {
+    padding: 0 36px;
+    height: 60px;
+    border-bottom: 1px solid var(--navy-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(7,13,34,0.95);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo img { height: 26px; display: block; }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  #last-updated { font-size: 11px; color: var(--text-dim); }
+  /* FILTERS */
+  .filters-bar {
+    padding: 12px 36px;
+    background: rgba(10,15,40,0.9);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--navy-border);
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  }
+  .filter-label {
+    font-size: 10px; text-transform: uppercase;
+    letter-spacing: 1.2px; color: var(--text-dim); font-weight: 600;
+  }
+  .filter-group { display: flex; align-items: center; gap: 6px; }
+  select, input[type="text"] {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--navy-border);
+    color: var(--text);
+    font-family: 'Inter', sans-serif; font-size: 12px;
+    padding: 6px 12px; border-radius: 6px;
+    outline: none; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    min-width: 130px;
+  }
+  select:focus, input[type="text"]:focus {
+    border-color: rgba(232,160,32,0.5);
+    background: rgba(255,255,255,0.07);
+  }
+  select option { background: #0c1535; color: #fff; }
+  .reset-btn {
+    padding: 6px 14px; background: transparent;
+    border: 1px solid var(--navy-border);
+    color: var(--text-dim); font-family: 'Inter', sans-serif;
+    font-size: 12px; border-radius: 6px; cursor: pointer;
+    transition: all 0.2s; font-weight: 500;
+  }
+  .reset-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .filter-count { font-size: 11px; color: var(--text-dim); margin-left: auto; }
+  .filter-count span { color: var(--gold); font-weight: 600; }
+  /* MAIN */
+  main { padding: 28px 36px; max-width: 1640px; margin: 0 auto; }
+  /* KPI */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+    gap: 12px; margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: var(--navy-card);
+    border: 1px solid var(--navy-border);
+    border-radius: 10px; padding: 18px 20px 16px;
+    position: relative; overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .kpi-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.14); }
+  .kpi-card::before {
+    content: ''; position: absolute;
+    top: 0; left: 20%; right: 20%; height: 2px;
+    border-radius: 0 0 4px 4px;
+  }
+  .kpi-card.gold::before  { background: var(--gold); box-shadow: 0 0 12px var(--gold); }
+  .kpi-card.blue::before  { background: var(--blue-acc); box-shadow: 0 0 12px var(--blue-acc); }
+  .kpi-card.green::before { background: var(--green); box-shadow: 0 0 12px var(--green); }
+  .kpi-card.red::before   { background: var(--red); box-shadow: 0 0 12px var(--red); }
+  .kpi-label {
+    font-size: 10px; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-dim);
+    font-weight: 600; margin-bottom: 8px;
+  }
+  .kpi-value {
+    font-size: 24px; font-weight: 800;
+    line-height: 1; margin-bottom: 5px; letter-spacing: -0.5px;
+  }
+  .kpi-card.gold  .kpi-value { color: var(--gold); }
+  .kpi-card.blue  .kpi-value { color: var(--blue-acc); }
+  .kpi-card.green .kpi-value { color: var(--green); }
+  .kpi-card.red   .kpi-value { color: var(--red); }
+  .kpi-sub { font-size: 11px; color: var(--text-dim); }
+  /* SECTION */
+  .section-title {
+    font-size: 10px; text-transform: uppercase;
+    letter-spacing: 1.8px; color: var(--text-dim);
+    font-weight: 700; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--navy-border); }
+  /* CHART CARDS */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
+  .charts-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 28px; }
+  .chart-card {
+    background: var(--navy-card);
+    border: 1px solid var(--navy-border);
+    border-radius: 10px; padding: 20px 22px;
+    transition: border-color 0.2s;
+  }
+  .chart-card:hover { border-color: rgba(255,255,255,0.12); }
+  .chart-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .chart-sub { font-size: 11px; color: var(--text-dim); margin-bottom: 16px; }
+  canvas { max-height: 230px; }
+  /* PROVIDERS */
+  .provider-list { display: flex; flex-direction: column; gap: 9px; margin-top: 4px; }
+  .provider-row {
+    display: grid; grid-template-columns: 1fr auto auto;
+    gap: 8px; align-items: center;
+  }
+  .provider-name {
+    font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; font-size: 11px;
+  }
+  .provider-val { font-size: 11px; color: var(--gold); font-weight: 700; text-align: right; white-space: nowrap; }
+  .provider-count { font-size: 10px; color: var(--text-dim); text-align: right; min-width: 22px; }
+  /* TABLE */
+  .table-controls {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px; flex-wrap: wrap; gap: 10px;
+  }
+  .table-search { min-width: 220px; }
+  .table-info { font-size: 11px; color: var(--text-dim); }
+  .table-wrap {
+    background: var(--navy-card);
+    border: 1px solid var(--navy-border);
+    border-radius: 10px; overflow: hidden;
+  }
+  .table-scroll { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead { position: sticky; top: 0; z-index: 10; background: rgba(7,13,34,0.97); }
+  th {
+    padding: 10px 14px; text-align: left;
+    font-size: 10px; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-dim);
+    font-weight: 700; border-bottom: 1px solid var(--navy-border);
+    white-space: nowrap; cursor: pointer;
+    user-select: none; transition: color 0.15s;
+  }
+  th:hover { color: var(--gold); }
+  th.sort-asc::after  { content: ' ↑'; color: var(--gold); }
+  th.sort-desc::after { content: ' ↓'; color: var(--gold); }
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text-mid); white-space: nowrap; font-size: 11px;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.025); }
+  td.c-gold  { color: var(--gold); font-weight: 600; }
+  td.c-blue  { color: var(--blue-acc); }
+  td.c-green { color: var(--green); font-weight: 600; }
+  td.c-red   { color: var(--red); font-weight: 600; }
+  .status-badge {
+    display: inline-block; padding: 2px 8px;
+    border-radius: 10px; font-size: 10px;
+    font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
+  }
+  .status-done { background: rgba(34,211,165,0.1); color: var(--green); border: 1px solid rgba(34,211,165,0.2); }
+  .status-open { background: rgba(232,160,32,0.1); color: var(--gold); border: 1px solid rgba(232,160,32,0.2); }
+  .status-sme  { background: rgba(61,142,240,0.1); color: var(--blue-acc); border: 1px solid rgba(61,142,240,0.2); }
+  .comment-cell {
+    max-width: 160px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* PAGINATION */
+  .pagination {
+    display: flex; align-items: center;
+    justify-content: center; gap: 5px;
+    padding: 12px; border-top: 1px solid var(--navy-border);
+  }
+  .page-btn {
+    width: 30px; height: 30px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--navy-border);
+    color: var(--text-dim); border-radius: 5px;
+    cursor: pointer; font-family: 'Inter', sans-serif;
+    font-size: 12px; display: flex;
+    align-items: center; justify-content: center;
+    transition: all 0.15s; font-weight: 500;
+  }
+  .page-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+  .page-btn.active { background: var(--gold); color: #000; border-color: var(--gold); font-weight: 800; }
+  .page-btn:disabled { opacity: 0.25; cursor: default; }
+  .no-data { text-align: center; padding: 40px; color: var(--text-dim); font-size: 13px; }
+  /* UPLOAD */
+  .upload-zone {
+    border: 2px dashed var(--navy-border);
+    border-radius: 14px; padding: 60px 40px;
+    text-align: center; margin-bottom: 28px;
+    cursor: pointer; transition: all 0.2s;
+    background: var(--navy-card); position: relative; overflow: hidden;
+  }
+  .upload-zone::after {
+    content: ''; position: absolute;
+    bottom: -30%; left: 5%; right: 5%; height: 50%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(61,142,240,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: rgba(232,160,32,0.4);
+    background: rgba(15,26,61,0.95);
+  }
+  .upload-zone h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.3px; }
+  .upload-zone p { font-size: 13px; color: var(--text-dim); }
+  .upload-icon { font-size: 40px; margin-bottom: 16px; display: block; }
+  .upload-btn {
+    display: inline-block; margin-top: 18px;
+    padding: 10px 24px; background: var(--gold);
+    border: none; color: #000; border-radius: 7px;
+    font-family: 'Inter', sans-serif; font-size: 13px;
+    font-weight: 700; cursor: pointer; transition: all 0.2s;
+  }
+  .upload-btn:hover { background: var(--gold-light); }
+  #file-input { display: none; }
+  .dashboard-content { display: none; }
+  .dashboard-content.visible { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <img src="data:image/png;base64,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" alt="Bluespine">
+  </div>
+  <div class="header-right">
+    <span id="last-updated">Loading...</span>
+    <button onclick="refreshData()" class="reset-btn" style="padding:4px 12px; font-size:11px;" title="Refresh data from Jira">
+      🔄 Refresh
+    </button>
+    <button onclick="exportFilteredData()" class="reset-btn" style="padding:4px 12px; font-size:11px; background:var(--gold); color:var(--navy-deep); border-color:var(--gold);" title="Export filtered data as CSV">
+      📥 Export CSV
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="upload-zone" id="upload-zone">
+    <span class="upload-icon">📂</span>
+    <h3>Load Claims CSV Export</h3>
+    <p>Drag &amp; drop your Jira CSV export here, or click to browse</p>
+    <label class="upload-btn" for="file-input">Choose File</label>
+    <input type="file" id="file-input" accept=".csv">
+  </div>
+
+  <div class="dashboard-content" id="dashboard-content">
+
+    <div style="text-align:center; margin:0 auto 28px auto;">
+      <h2 style="font-size:24px; font-weight:800; color:var(--text); letter-spacing:-0.4px;">
+        Bluespine Dashboard <span style="color:var(--gold);" id="header-tenant-name">&mdash;</span>
+      </h2>
+    </div>
+
+    <div class="filters-bar" id="filters-bar" style="margin:-28px -36px 28px -36px; padding:12px 36px;">
+      <div class="filter-group">
+        <span class="filter-label">From</span>
+        <input type="date" id="filter-start-date" onchange="applyFilters()" style="min-width:140px;">
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">To</span>
+        <input type="date" id="filter-end-date" onchange="applyFilters()" style="min-width:140px;">
+      </div>
+      <div class="filter-group">
+        <button onclick="setQuickRange('last30')" class="reset-btn" style="padding:4px 10px; font-size:10px;">Last 30d</button>
+        <button onclick="setQuickRange('last90')" class="reset-btn" style="padding:4px 10px; font-size:10px;">Last 90d</button>
+        <button onclick="setQuickRange('ytd')" class="reset-btn" style="padding:4px 10px; font-size:10px;">YTD</button>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Payer</span>
+        <select id="filter-payer"><option value="">All Payers</option></select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Provider</span>
+        <select id="filter-provider"><option value="">All Providers</option></select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">NPI</span>
+        <input type="text" id="filter-npi" placeholder="Search NPI...">
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Overpayment</span>
+        <select id="filter-overpayment">
+          <option value="">All Claims</option>
+          <option value="yes">Yes (&gt; $0)</option>
+          <option value="no">No (= $0)</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Type of Bill</span>
+        <select id="filter-type-of-bill"><option value="">All Types</option></select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Status</span>
+        <select id="filter-status"><option value="">All Statuses</option></select>
+      </div>
+      <button class="reset-btn" id="reset-btn">&#8635; Reset</button>
+      <button class="reset-btn" onclick="saveDashboard()" style="border-color:var(--blue-acc); color:var(--blue-acc);">Save Dashboard</button>
+      <div class="filter-count" id="filter-count">Showing <span id="count-num">0</span> claims</div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card gold">
+        <div class="kpi-label">Fee for Bluespine</div>
+        <div class="kpi-value" id="kpi-fee">&#8212;</div>
+        <div class="kpi-sub" id="kpi-fee-sub">% &times; Total OVP</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">Total Paid (Allowed)</div>
+        <div class="kpi-value" id="kpi-allowed">&#8212;</div>
+        <div class="kpi-sub">Sum of Allowed</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Total Overpayment</div>
+        <div class="kpi-value" id="kpi-ovp">&#8212;</div>
+        <div class="kpi-sub">Sum of OVP</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">% of Savings</div>
+        <div class="kpi-value" id="kpi-savings">&#8212;</div>
+        <div class="kpi-sub">OVP &divide; Allowed</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">Avg Close Time</div>
+        <div class="kpi-value" id="kpi-avg-close">&#8212;</div>
+        <div class="kpi-sub">Days (Created&rarr;Closed)</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">Median Close Time</div>
+        <div class="kpi-value" id="kpi-med-close">&#8212;</div>
+        <div class="kpi-sub">Days (Created&rarr;Closed)</div>
+      </div>
+      <div class="kpi-card gold">
+        <div class="kpi-label">Total Claims</div>
+        <div class="kpi-value" id="kpi-count">&#8212;</div>
+        <div class="kpi-sub">Filtered records</div>
+      </div>
+    </div>
+
+    <div class="section-title">Trends Over Time</div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Fee for Bluespine</div>
+        <div class="chart-sub" id="chart-fee-sub">Monthly Bluespine revenue from recoupment</div>
+        <canvas id="chart-fee"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Total Paid (Allowed) vs Overpayment</div>
+        <div class="chart-sub">Monthly $ amounts</div>
+        <canvas id="chart-amounts"></canvas>
+      </div>
+    </div>
+
+    <div class="charts-grid-3">
+      <div class="chart-card">
+        <div class="chart-title">% of Savings</div>
+        <div class="chart-sub">OVP &divide; Allowed by month</div>
+        <canvas id="chart-savings"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Avg &amp; Median Close Time</div>
+        <div class="chart-sub">Days to close by month</div>
+        <canvas id="chart-close"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Top Providers</div>
+        <div class="chart-sub">By total overpayment</div>
+        <div class="provider-list" id="top-providers-list"></div>
+      </div>
+    </div>
+
+    <div class="section-title">Raw Claims Data</div>
+    <div class="table-controls">
+      <input type="text" class="table-search" id="table-search" placeholder="Search claims...">
+      <div class="table-info" id="table-info">&#8212; records</div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead><tr id="table-head"></tr></thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+
+  </div>
+</main>
+
+<div id="comment-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(7,13,34,0.85); z-index:10000; align-items:center; justify-content:center;">
+  <div style="background:var(--navy-card); padding:24px; border-radius:12px; border:1px solid var(--navy-border); max-width:600px; width:90%; max-height:80vh; overflow-y:auto; color:var(--text); position:relative;">
+    <button onclick="closeCommentModal()" style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:var(--text-dim); font-size:22px; cursor:pointer;">&times;</button>
+    <h3 style="margin-bottom:16px; color:var(--gold); font-size:13px; text-transform:uppercase; letter-spacing:1.5px;">Close Comment</h3>
+    <div id="modal-text" style="white-space:pre-wrap; font-size:12px; line-height:1.6; color:var(--text-mid);"></div>
+  </div>
+</div>
+
+<!-- Load dashboard modules BEFORE the inline script -->
+<script src="/js/api.client.1782732316.js"></script>
+<script src="/js/data.processor.1782732316.js"></script>
+<script src="/js/export.service.js?v=15"></script>
+
+<script>
+
+// ─── DATA STORE ────────────────────────────────────────────────────────────
+let allData = [];
+let filteredData = [];
+let tableData = [];
+let currentPage = 1;
+const PAGE_SIZE = 20;
+let sortCol = null, sortDir = 1;
+
+// ─── API INTEGRATION ────────────────────────────────────────────────────────
+async function loadDataFromAPI() {
+  try {
+    // Check if API client is loaded
+    if (!window.apiClient) {
+      showError('API Client not loaded. Please refresh the page.');
+      console.error('window.apiClient is undefined');
+      return;
+    }
+
+    // Initialize API client from URL
+    if (!window.apiClient.init()) {
+      showError('Invalid URL format. Expected: /tenant/token');
+      return;
+    }
+
+    // Show loading state
+    document.getElementById('last-updated').textContent = 'Loading from Jira...';
+
+    // Fetch data from API
+    const result = await window.apiClient.fetchData();
+
+    // Check if DataProcessor is loaded
+    if (!window.DataProcessor) {
+      showError('Data Processor not loaded. Please refresh the page.');
+      console.error('window.DataProcessor is undefined');
+      return;
+    }
+
+    // Process data using DataProcessor
+    allData = window.DataProcessor.processData(result.claims);
+
+    // Update tenant name in header
+    document.getElementById('header-tenant-name').textContent = '- ' + window.apiClient.getTenantName();
+
+    // Update last updated indicator
+    document.getElementById('last-updated').textContent =
+      `${allData.length} claims · Last updated: ${window.apiClient.getLastUpdatedText()}`;
+
+    // Setup filter dropdowns and render
+    setupFilters();
+
+  } catch (error) {
+    console.error('Error in loadDataFromAPI:', error);
+    if (error.message === 'INVALID_TOKEN') {
+      showError('Invalid or expired access link. Please contact your administrator for a new link.');
+    } else {
+      showError(`Failed to load data: ${error.message}`);
+    }
+  }
+}
+
+async function refreshData() {
+  await loadDataFromAPI();
+}
+
+function exportFilteredData() {
+  if (!filteredData || filteredData.length === 0) {
+    alert('No data to export');
+    return;
+  }
+  window.exportService.exportFilteredCSV(filteredData, window.apiClient.tenant);
+}
+
+function showError(message) {
+  const header = document.querySelector('header');
+  const errorDiv = document.createElement('div');
+  errorDiv.style.cssText = 'position:fixed; top:70px; left:50%; transform:translateX(-50%); background:var(--red); color:white; padding:16px 24px; border-radius:8px; z-index:1000; max-width:500px; text-align:center; font-size:13px; box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+  errorDiv.textContent = message;
+  document.body.appendChild(errorDiv);
+  setTimeout(() => errorDiv.remove(), 10000);
+}
+
+// ─── DATE RANGE HELPERS ─────────────────────────────────────────────────────
+function setQuickRange(range) {
+  const today = new Date();
+  const startInput = document.getElementById('filter-start-date');
+  const endInput = document.getElementById('filter-end-date');
+
+  let startDate;
+
+  if (range === 'last30') {
+    startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - 30);
+  } else if (range === 'last90') {
+    startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - 90);
+  } else if (range === 'ytd') {
+    startDate = new Date(today.getFullYear(), 0, 1);
+  }
+
+  startInput.value = startDate.toISOString().split('T')[0];
+  endInput.value = today.toISOString().split('T')[0];
+
+  applyFilters();
+}
+
+// ─── USE DATA PROCESSOR FUNCTIONS (avoid duplicate declarations) ─────────
+// Functions and constants are in data.processor.js
+// FIELD_MAP is declared globally by data.processor.js - don't redeclare it here
+// getField() is in data.processor.js (handles JSON string parsing for Jira API v3)
+
+// ─── CSV PARSER ────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = [];
+  let row = [];
+  let cell = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i+1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        cell += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if ((char === ',' || char === '\t') && !inQuotes) {
+      row.push(cell.trim());
+      cell = '';
+    } else if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && nextChar === '\n') { i++; }
+      row.push(cell.trim());
+      lines.push(row);
+      row = [];
+      cell = '';
+    } else {
+      cell += char;
+    }
+  }
+  if (cell !== '' || row.length > 0) {
+    row.push(cell.trim());
+    lines.push(row);
+  }
+
+  if (lines.length < 2) return [];
+
+  const headers = lines[0].map(h => h.trim());
+  const cleanHeaders = headers.map(h => h.replace(/^Custom field \(/, '').replace(/\)$/, ''));
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const vals = lines[i];
+    if (vals.length === 0 || (vals.length === 1 && vals[0] === '')) continue;
+    
+    const rowObj = {};
+    headers.forEach((h, idx) => {
+      if (rowObj[h] === undefined || rowObj[h] === '') {
+        rowObj[h] = vals[idx] || '';
+      }
+      const cleanKey = cleanHeaders[idx];
+      if (rowObj[cleanKey] === undefined || rowObj[cleanKey] === '') {
+        rowObj[cleanKey] = vals[idx] || '';
+      }
+    });
+    rows.push(rowObj);
+  }
+  return rows;
+}
+
+// ─── VALUE PARSERS ─────────────────────────────────────────────────────────
+function parseNum(v) {
+  if (!v && v !== 0) return null;
+  const n = parseFloat(String(v).replace(/[,$%]/g, ''));
+  return isNaN(n) ? null : n;
+}
+
+function parseDate(v) {
+  if (!v) return null;
+  let d = new Date(v);
+  if (!isNaN(d)) return d;
+  const m1 = v.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (m1) { d = new Date(`${m1[3]}-${m1[2]}-${m1[1]}`); if (!isNaN(d)) return d; }
+  const m2 = v.match(/^(\d{2})\/([A-Za-z]{3})\/(\d{2,4})/);
+  if (m2) {
+    const yr = m2[3].length === 2 ? '20'+m2[3] : m2[3];
+    d = new Date(`${m2[2]} ${m2[1]} ${yr}`);
+    if (!isNaN(d)) return d;
+  }
+  return null;
+}
+
+function fmtMoney(v) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+function fmtPct(v) {
+  if (v === null || isNaN(v)) return '—';
+  return (v * 100).toFixed(1) + '%';
+}
+
+function fmtDays(v) {
+  if (v === null || isNaN(v)) return '—';
+  return v.toFixed(1) + 'd';
+}
+
+function getMonthKey(d) {
+  if (!d) return null;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function fmtMonth(k) {
+  if (!k) return '—';
+  const [y, m] = k.split('-');
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1] + " '" + y.slice(2);
+}
+
+function cleanCommentText(v) {
+  if (!v) return '—';
+  let s = String(v);
+  s = s.replace(/\{code(json)?\}/gi, '');
+  s = s.replace(/[\{\}\"\\]/g, ' ');
+  s = s.replace(/done\s*:/gi, '');
+  s = s.replace(/code:json/gi, '');
+  s = s.replace(/\s+/g, ' ');
+  return s.trim();
+}
+
+// ─── ENRICH ROW ─────────────────────────────────────────────────────────────
+// enrichRow() is defined in data.processor.js (includes _typeOfBill, _patientId, _claimCategory, _comment)
+
+// ─── CHART INSTANCES ────────────────────────────────────────────────────────
+let charts = {};
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => c && c.destroy());
+  charts = {};
+}
+
+const CHART_DEFAULTS = {
+  responsive: true,
+  maintainAspectRatio: true,
+  plugins: { legend: { labels: { color: 'rgba(255,255,255,0.4)', font: { family: 'Inter', size: 10 }, boxWidth: 12 } } },
+  scales: {
+    x: { ticks: { color: 'rgba(255,255,255,0.35)', font: { family: 'Inter', size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+    y: { ticks: { color: 'rgba(255,255,255,0.35)', font: { family: 'Inter', size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+  }
+};
+
+function makeChart(id, cfg) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(canvas, cfg);
+}
+
+// ─── COMPUTE + RENDER ────────────────────────────────────────────────────────
+function computeAndRender() {
+  const fd = filteredData;
+
+  const totalAllowed = fd.reduce((s,r) => s + (r._allowed || 0), 0);
+  const totalOVP     = fd.reduce((s,r) => s + (r._overpayment || 0), 0);
+  const feePct       = totalAllowed ? totalOVP / totalAllowed : null;
+  const closeDays    = fd.map(r => r._closeDays).filter(v => v !== null && v >= 0);
+  const avgClose     = closeDays.length ? closeDays.reduce((a,b) => a+b, 0) / closeDays.length : null;
+  const sortedClose  = [...closeDays].sort((a,b) => a-b);
+  const medClose     = sortedClose.length ? sortedClose[Math.floor(sortedClose.length/2)] : null;
+
+  const bluespineFee = fd.reduce((s,r) => s + (r._bluespineFee || 0), 0);
+  const tenants = [...new Set(fd.map(r => r._tenant).filter(Boolean))];
+  
+  const activeTenantName = tenants.length === 1
+    ? tenants[0]
+    : tenants.length === 0 && allData.length > 0
+    ? allData[0]._tenant
+    : 'All Tenants';
+
+  document.getElementById('header-tenant-name').textContent = `- ${canBeBlank = tenants.length > 1 ? 'Multiple Tenants' : canBeBlank = tenants.length === 0 ? 'All Tenants' : tenants[0]}`;
+
+  const activeTenantKey = fd[0]?._tenantKey || fd[0]?._tenant || '';
+
+  const feeLabel = tenants.length === 1
+    ? `${(window.DataProcessor.getTenantRate(activeTenantKey)*100).toFixed(0)}% × OVP (${tenants[0]})`
+    : tenants.length === 0 ? `${DEFAULT_RATE*100}% × OVP` : 'Mixed rate × OVP';
+  document.getElementById('kpi-fee-sub').textContent = feeLabel;
+  const chartFeeSubEl = document.getElementById('chart-fee-sub'); if(chartFeeSubEl) chartFeeSubEl.textContent = 'Monthly Bluespine revenue · ' + feeLabel;
+
+  document.getElementById('kpi-fee').textContent     = fmtMoney(bluespineFee);
+  document.getElementById('kpi-allowed').textContent = fmtMoney(totalAllowed);
+  document.getElementById('kpi-ovp').textContent     = fmtMoney(totalOVP);
+  document.getElementById('kpi-savings').textContent = fmtPct(feePct);
+  document.getElementById('kpi-avg-close').textContent = fmtDays(avgClose);
+  document.getElementById('kpi-med-close').textContent = fmtDays(medClose);
+  document.getElementById('kpi-count').textContent   = fd.length;
+
+  const months = {};
+  fd.forEach(r => {
+    const k = r._monthKey || 'Unknown';
+    if (!months[k]) months[k] = { allowed: 0, ovp: 0, fee: 0, closeDays: [], count: 0 };
+    months[k].allowed += r._allowed || 0;
+    months[k].ovp      += r._overpayment || 0;
+    months[k].fee      += r._bluespineFee || 0;
+    if (r._closeDays !== null && r._closeDays >= 0) months[k].closeDays.push(r._closeDays);
+    months[k].count++;
+  });
+  const sortedMonths = Object.keys(months).filter(k => k !== 'Unknown').sort();
+  if (months['Unknown']) sortedMonths.push('Unknown');
+  const monthLabels = sortedMonths.map(fmtMonth);
+
+  const chartFeeLabel = tenants.length === 1
+    ? `Bluespine Fee (${(window.DataProcessor.getTenantRate(activeTenantKey)*100).toFixed(0)}% OVP)`
+    : 'Bluespine Fee';
+  makeChart('chart-fee', {
+    type: 'line',
+    data: {
+      labels: monthLabels,
+      datasets: [{
+        label: chartFeeLabel,
+        data: sortedMonths.map(k => +months[k].fee.toFixed(2)),
+        borderColor: '#e8a020', backgroundColor: 'rgba(232,160,32,0.08)',
+        tension: 0.4, fill: true, pointBackgroundColor: '#e8a020', pointRadius: 4
+      }]
+    },
+    options: { ...CHART_DEFAULTS, plugins: { ...CHART_DEFAULTS.plugins, legend: { display: false } },
+      scales: { ...CHART_DEFAULTS.scales, y: { ...CHART_DEFAULTS.scales.y, ticks: { ...CHART_DEFAULTS.scales.y.ticks, callback: v => '$' + (v/1000).toFixed(1) + 'k' } } } }
+  });
+
+  // Allowed vs Overpayment chart
+  makeChart('chart-amounts', {
+    type: 'bar',
+    data: {
+      labels: monthLabels,
+      datasets: [
+        { label: 'Allowed', data: sortedMonths.map(k => +months[k].allowed.toFixed(0)), backgroundColor: 'rgba(61,142,240,0.75)', borderRadius: 4 },
+        { label: 'Overpayment', data: sortedMonths.map(k => +months[k].ovp.toFixed(0)), backgroundColor: 'rgba(240,90,90,0.7)', borderRadius: 4 }
+      ]
+    },
+    options: { ...CHART_DEFAULTS,
+      scales: { ...CHART_DEFAULTS.scales, y: { ...CHART_DEFAULTS.scales.y, ticks: { ...CHART_DEFAULTS.scales.y.ticks, callback: v => '$' + (v/1000).toFixed(0) + 'k' } } } }
+  });
+
+  // % Savings chart
+  makeChart('chart-savings', {
+    type: 'bar',
+    data: {
+      labels: monthLabels,
+      datasets: [{ label: '% Savings', data: sortedMonths.map(k => months[k].allowed ? +(months[k].ovp / months[k].allowed * 100).toFixed(2) : 0), backgroundColor: '#e8a020', borderRadius: 4 }]
+    },
+    options: { ...CHART_DEFAULTS, plugins: { ...CHART_DEFAULTS.plugins, legend: { display: false } },
+      scales: { ...CHART_DEFAULTS.scales, y: { ...CHART_DEFAULTS.scales.y, ticks: { ...CHART_DEFAULTS.scales.y.ticks, callback: v => v + '%' } } } }
+  });
+
+  // Close times chart
+  const medianArr = sortedMonths.map(k => {
+    const s = [...months[k].closeDays].sort((a,b) => a-b);
+    return s.length ? +s[Math.floor(s.length/2)].toFixed(1) : null;
+  });
+  const avgArr = sortedMonths.map(k => {
+    const d = months[k].closeDays;
+    return d.length ? +(d.reduce((a,b) => a+b,0)/d.length).toFixed(1) : null;
+  });
+  makeChart('chart-close', {
+    type: 'line',
+    data: {
+      labels: monthLabels,
+      datasets: [
+        { label: 'Avg Days', data: avgArr, borderColor: '#3d8ef0', tension: 0.4, pointBackgroundColor: '#3d8ef0', pointRadius: 4 },
+        { label: 'Median Days', data: medianArr, borderColor: '#e8a020', borderDash: [5,3], tension: 0.4, pointBackgroundColor: '#e8a020', pointRadius: 4 }
+      ]
+    },
+    options: { ...CHART_DEFAULTS,
+      scales: { ...CHART_DEFAULTS.scales, y: { ...CHART_DEFAULTS.scales.y, ticks: { ...CHART_DEFAULTS.scales.y.ticks, callback: v => v + 'd' } } } }
+  });
+
+  // Providers aggregation (grouped by NPI or name)
+  const provMap = {};
+  fd.forEach(r => {
+    const p = r._npi || r._provider || 'Unknown';
+    if (!provMap[p]) {
+      provMap[p] = { name: r._provider || 'Unknown', ovp: 0, count: 0 };
+    }
+    if (r._provider && r._provider !== '—') {
+      provMap[p].name = r._provider;
+    }
+    provMap[p].ovp   += r._overpayment || 0;
+    provMap[p].count++;
+  });
+
+  const topProvs = Object.entries(provMap).sort((a,b) => b[1].ovp - a[1].ovp).slice(0, 8);
+  const maxOVP = topProvs[0]?.[1].ovp || 1;
+  const list = document.getElementById('top-providers-list');
+  list.innerHTML = topProvs.map(([npiKey, d]) => `
+    <div class="provider-row">
+      <div style="overflow:hidden;">
+        <div class="provider-name" title="${d.name}">${d.name || '—'}</div>
+        <div style="background:var(--border);height:3px;border-radius:2px;margin-top:4px;">
+          <div style="background:linear-gradient(90deg,#3d8ef0,#e8a020);height:100%;border-radius:2px;width:${(d.ovp/maxOVP*100).toFixed(1)}%"></div>
+        </div>
+      </div>
+      <div class="provider-val">${fmtMoney(d.ovp)}</div>
+      <div class="provider-count">${d.count}x</div>
+    </div>
+  `).join('') || '<div class="no-data">No provider data</div>';
+
+  renderTable();
+}
+
+// ─── TABLE ────────────────────────────────────────────────────────────────────
+const TABLE_COLS = [
+  { key: '_externalKey', label: 'External Key', get: r => getField(r, 'externalKey') },
+  { key: '_patientId',   label: 'Patient ID',   get: r => getField(r, 'patientId') },
+  { key: '_status',      label: 'Status',       get: r => r._status },
+  { key: '_tenant',      label: 'Tenant',       get: r => r._tenant },
+  { key: '_provider',    label: 'Provider',     get: r => r._provider },
+  { key: '_npi',         label: 'NPI',          get: r => r._npi },
+  { key: '_payer',       label: 'Payer',        get: r => r._payer },
+  { key: '_allowed',     label: 'Allowed $',    get: r => r._allowed },
+  { key: '_overpayment', label: 'OVP $',        get: r => r._overpayment },
+  { key: '_feePct',      label: '% OVP',        get: r => r._feePct },
+  { key: '_bluespineFee',label: 'BS Fee',       get: r => r._bluespineFee },
+  { key: '_closeDays',   label: 'Close Days',   get: r => r._closeDays },
+  { key: '_created',     label: 'Created',      get: r => r._created },
+  { key: '_closeComment',label: 'Close Comment',get: r => r._comment || '—' },
+  { key: '_typeOfBill',  label: 'Type of Bill', get: r => r._typeOfBill || '—' },
+  { key: '_medReview',   label: 'Med Record Reviewed', get: r => r._medicalRecordReviewed || '—' },
+  { key: '_claimCategory', label: 'Claim Category', get: r => { const v = r._claimCategory; if (!v) return '—'; return Array.isArray(v) ? [...new Set(v)].join(', ') : (typeof v === 'string' ? [...new Set(v.split(',').map(x=>x.trim()).filter(Boolean))].join(', ') : v) || '—'; } },
+  { key: '_issueKey',    label: 'Issue',        get: r => getField(r, 'issueKey') },
+];
+
+function renderTable() {
+  const searchQ = (document.getElementById('table-search')?.value || '').toLowerCase();
+  tableData = filteredData.filter(r => {
+    if (!searchQ) return true;
+    return TABLE_COLS.some(c => {
+      const v = c.get(r);
+      return v !== null && v !== undefined && String(v).toLowerCase().includes(searchQ);
+    });
+  });
+
+  if (sortCol !== null) {
+    tableData.sort((a, b) => {
+      const av = TABLE_COLS[sortCol].get(a);
+      const bv = TABLE_COLS[sortCol].get(b);
+      if (av === null || av === undefined) return 1;
+      if (bv === null || bv === undefined) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sortDir;
+      return String(av).localeCompare(String(bv)) * sortDir;
+    });
+  }
+
+  const totalPages = Math.max(1, Math.ceil(tableData.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const pageData = tableData.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
+
+  const thead = document.getElementById('table-head');
+  thead.innerHTML = TABLE_COLS.map((c, i) => {
+    let cls = sortCol === i ? (sortDir === 1 ? 'sort-asc' : 'sort-desc') : '';
+    return `<th class="${cls}" onclick="tableSort(${i})">${c.label}</th>`;
+  }).join('');
+
+  const tbody = document.getElementById('table-body');
+  if (pageData.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="${TABLE_COLS.length}" class="no-data">No matching records</td></tr>`;
+  } else {
+    tbody.innerHTML = pageData.map(r => `<tr>${TABLE_COLS.map(c => {
+      const v = c.get(r);
+      let display = '—', cls = '';
+      if (c.key === '_status') {
+        const s = (v||'').toLowerCase();
+        const badgeCls = s.includes('done') || s.includes('closed') ? 'status-done' : s.includes('sme') ? 'status-sme' : 'status-open';
+        display = `<span class="status-badge ${badgeCls}">${v||'—'}</span>`;
+      } else if (c.key === '_allowed' || c.key === '_overpayment') {
+        display = v !== null ? fmtMoney(v) : '—';
+        cls = c.key === '_overpayment' && v > 0 ? 'c-red' : 'c-blue';
+      } else if (c.key === '_bluespineFee') {
+        display = v !== null ? fmtMoney(v) : '—';
+        cls = 'c-green';
+      } else if (c.key === '_feePct') {
+        display = v !== null ? fmtPct(v) : '—';
+        cls = 'c-red';
+      } else if (c.key === '_closeComment') {
+        const cleanedComment = cleanCommentText(v);
+        display = `<div class="comment-cell" style="cursor:pointer; color:var(--blue-acc); text-decoration:underline;" onclick="openCommentModal(this)" data-full-comment="${encodeURIComponent(cleanedComment)}">${cleanedComment}</div>`;
+        cls = 'comment-cell';
+      } else if (c.key === '_closeDays') {
+        display = v !== null ? fmtDays(v) : '—';
+        cls = v !== null && v > 14 ? 'highlight-yellow' : '';
+      } else if (c.key === '_created' && v instanceof Date) {
+        display = v.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+      } else {
+        display = v !== null && v !== undefined && v !== '' ? String(v) : '—';
+      }
+      return `<td class="${cls}">${display}</td>`;
+    }).join('')}</tr>`).join('');
+  }
+
+  document.getElementById('table-info').textContent = `${tableData.length} records`;
+
+  const pag = document.getElementById('pagination');
+  if (totalPages <= 1) { pag.innerHTML = ''; return; }
+  let html = `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  const range = [];
+  for (let p = 1; p <= totalPages; p++) {
+    if (p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2) range.push(p);
+    else if (range[range.length-1] !== '…') range.push('…');
+  }
+  range.forEach(p => {
+    if (p === '…') html += `<span class="page-btn" style="cursor:default">…</span>`;
+    else html += `<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+  });
+  html += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+  pag.innerHTML = html;
+}
+
+window.openCommentModal = function(element) {
+  const commentText = decodeURIComponent(element.getAttribute('data-full-comment'));
+  const modal = document.getElementById('comment-modal');
+  const modalText = document.getElementById('modal-text');
+  modalText.textContent = commentText;
+  modal.style.display = 'flex';
+};
+
+window.closeCommentModal = function() {
+  document.getElementById('comment-modal').style.display = 'none';
+};
+
+window.tableSort = function(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = -1; }
+  currentPage = 1;
+  renderTable();
+};
+window.goPage = function(p) {
+  currentPage = p;
+  renderTable();
+};
+
+// ─── FILTER SETUP ────────────────────────────────────────────────────────────
+function setupFilters() {
+  let payers      = [...new Set(allData.map(r => r._payer).filter(Boolean))].sort();
+  const providers = [...new Set(allData.map(r => r._npi || r._provider).filter(Boolean))].sort();
+  const statuses  = [...new Set(allData.map(r => r._status).filter(Boolean))].sort();
+
+  payers = payers.filter(p => !p.startsWith('content:'));
+
+  const fPayer    = document.getElementById('filter-payer');
+  const fProvider = document.getElementById('filter-provider');
+  const fStatus   = document.getElementById('filter-status');
+  const fBill     = document.getElementById('filter-type-of-bill');
+
+  fPayer.innerHTML = '<option value="">All Payers</option>';
+  fProvider.innerHTML = '<option value="">All Providers</option>';
+  fStatus.innerHTML = '<option value="">All Statuses</option>';
+  fBill.innerHTML = '<option value="">All Types</option>';
+
+  payers.forEach(p    => fPayer.innerHTML    += `<option value="${p}">${p}</option>`);
+
+  // Provider Filter Options Setup
+  const providerMap = {};
+  allData.forEach(r => {
+    if (r._npi) {
+      providerMap[r._npi] = r._provider;
+    } else if (r._provider && r._provider !== '—' && !Object.values(providerMap).includes(r._provider)) {
+      providerMap[r._provider] = r._provider;
+    }
+  });
+
+  Object.entries(providerMap).forEach(([key, name]) => {
+    fProvider.innerHTML += `<option value="${key}">${name} (${key})</option>`;
+  });
+
+  statuses.forEach(s  => fStatus.innerHTML   += `<option value="${s}">${s}</option>`);
+
+  // Type of Bill Filter Options Setup
+  const bills = [...new Set(allData.map(r => getField(r, 'typeOfBill')).filter(Boolean))].sort();
+  bills.forEach(b => fBill.innerHTML += `<option value="${b}">${b}</option>`);
+
+  // Setup filter event listeners
+  ['filter-payer','filter-provider','filter-status','filter-overpayment', 'filter-type-of-bill'].forEach(id => {
+    document.getElementById(id).addEventListener('change', applyFilters);
+  });
+  document.getElementById('filter-npi').addEventListener('input', applyFilters);
+  document.getElementById('reset-btn').addEventListener('click', resetFilters);
+  document.getElementById('table-search').addEventListener('input', () => { currentPage = 1; renderTable(); });
+
+  // Set default date range to last 90 days
+  setQuickRange('last90');
+}
+
+function applyFilters() {
+  const startDateStr = document.getElementById('filter-start-date').value;
+  const endDateStr   = document.getElementById('filter-end-date').value;
+  const payer        = document.getElementById('filter-payer').value;
+  const provider     = document.getElementById('filter-provider').value;
+  const npi          = document.getElementById('filter-npi').value.trim().toLowerCase();
+  const status       = document.getElementById('filter-status').value;
+  const ovp          = document.getElementById('filter-overpayment').value;
+  const bill         = document.getElementById('filter-type-of-bill').value;
+
+  const startDate = startDateStr ? new Date(startDateStr) : null;
+  const endDate   = endDateStr ? new Date(endDateStr) : null;
+
+  filteredData = allData.filter(r => {
+    // Date range filter
+    if (startDate && r._created && r._created < startDate) return false;
+    if (endDate && r._created && r._created > endDate) return false;
+
+    if (payer    && r._payer    !== payer)               return false;
+    if (provider && r._npi !== provider && r._provider !== provider) return false;
+    if (npi      && !r._npi.toLowerCase().includes(npi)) return false;
+    if (status   && r._status   !== status)              return false;
+    if (bill     && getField(r, 'typeOfBill') !== bill)  return false;
+
+    if (ovp === 'yes' && (!r._overpayment || r._overpayment <= 0)) return false;
+    if (ovp === 'no'  && (r._overpayment > 0))              return false;
+
+    return true;
+  });
+
+  document.getElementById('count-num').textContent = filteredData.length;
+  currentPage = 1;
+  destroyCharts();
+  computeAndRender();
+}
+
+function resetFilters() {
+  // Clear date inputs
+  document.getElementById('filter-start-date').value = '';
+  document.getElementById('filter-end-date').value = '';
+
+  // Clear other filters
+  ['filter-payer','filter-provider','filter-status','filter-overpayment', 'filter-type-of-bill'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('filter-npi').value = '';
+
+  filteredData = [...allData];
+  document.getElementById('count-num').textContent = filteredData.length;
+  currentPage = 1;
+  destroyCharts();
+  computeAndRender();
+}
+
+// ─── FILE HANDLING ───────────────────────────────────────────────────────────
+function loadData(text) {
+  const raw = parseCSV(text);
+  if (raw.length === 0) { alert('No data found in CSV'); return; }
+
+  allData = raw.map(enrichRow).filter(Boolean);
+  filteredData = [...allData];
+
+  document.getElementById('upload-zone').style.display = 'none';
+  const dash = document.getElementById('dashboard-content');
+  dash.classList.add('visible');
+  document.getElementById('last-updated').textContent = `${allData.length} claims · ${new Date().toLocaleDateString()}`;
+  document.getElementById('count-num').textContent = allData.length;
+
+  setupFilters();
+  computeAndRender();
+}
+
+document.getElementById('file-input').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => loadData(ev.target.result);
+  reader.readAsText(f);
+});
+
+const uz = document.getElementById('upload-zone');
+uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('drag-over'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('drag-over'));
+uz.addEventListener('drop', e => {
+  e.preventDefault(); uz.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => loadData(ev.target.result);
+  reader.readAsText(f);
+});
+
+async function saveDashboard() {
+  if (allData.length === 0) {
+    alert('No data loaded to save.');
+    return;
+  }
+
+  const tenants = [...new Set(filteredData.map(r => r._tenant).filter(Boolean))];
+  let tenantName = 'Multiple Tenants';
+  if (tenants.length === 1) {
+    tenantName = tenants[0];
+  } else if (tenants.length === 0 && allData.length > 0) {
+    tenantName = allData[0]._tenant;
+  }
+
+  // Fetch external JS module contents to inline them
+  const externalScripts = document.querySelectorAll('script[src^="/js/"]');
+  const scriptContents = {};
+  for (const script of externalScripts) {
+    const src = script.getAttribute('src');
+    try {
+      const resp = await fetch(src);
+      scriptContents[src] = await resp.text();
+    } catch (e) {
+      scriptContents[src] = '';
+    }
+  }
+
+  const doc = document.cloneNode(true);
+
+  // Replace external /js/ script tags with inline versions
+  const clonedExternals = doc.querySelectorAll('script[src^="/js/"]');
+  clonedExternals.forEach(tag => {
+    const src = tag.getAttribute('src');
+    const inlineScript = doc.createElement('script');
+    inlineScript.textContent = scriptContents[src] || '';
+    tag.parentNode.replaceChild(inlineScript, tag);
+  });
+
+  // Embed allData into the inline script
+  const scripts = doc.scripts;
+  for (let i = 0; i < scripts.length; i++) {
+    if (scripts[i].text.includes('let allData = [];')) {
+      scripts[i].text = scripts[i].text.replace('let allData = [];', 'let allData = ' + JSON.stringify(allData) + ';');
+      break;
+    }
+  }
+
+  // Hide upload zone, show dashboard
+  const uploadZone = doc.getElementById('upload-zone');
+  if (uploadZone) uploadZone.style.display = 'none';
+  const dashContent = doc.getElementById('dashboard-content');
+  if (dashContent) dashContent.classList.add('visible');
+
+  const htmlContent = '<!DOCTYPE html>\n<html lang="en">' + doc.documentElement.innerHTML + '</html>';
+  const blob = new Blob([htmlContent], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Bluespine Dashboard - ${tenantName}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const uploadZone = document.getElementById('upload-zone');
+  const dashboardContent = document.getElementById('dashboard-content');
+  uploadZone.style.display = 'none';
+  dashboardContent.classList.add('visible');
+
+  if (typeof allData !== 'undefined' && allData.length > 0) {
+    // Saved file with embedded data — render immediately without API
+    filteredData = [...allData];
+    document.getElementById('last-updated').textContent = `${allData.length} claims · saved`;
+    document.getElementById('count-num').textContent = allData.length;
+    setupFilters();
+  } else {
+    // Live mode — fetch from API
+    await loadDataFromAPI();
+  }
+});
+</script>
+
+</body>
+</html>
