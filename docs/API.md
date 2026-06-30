@@ -113,6 +113,48 @@ Fetch claims data for a specific tenant. Returns cached data if available and fr
 
 ---
 
+### Get Overpayment Changes
+
+Fetch recent overpayment changes for a tenant, enriched with claim context.
+
+**Endpoint:** `GET /api/data/:tenant/:token/changes`
+
+**Authentication:** Tenant access token (in URL)
+
+**Parameters:**
+- `tenant` (path) - Tenant identifier
+- `token` (path) - 64-character access token
+- `days` (query, optional) - Number of days to look back (default: 30)
+
+**Response:**
+```json
+{
+  "success": true,
+  "changes": [
+    {
+      "issueKey": "CLAIM-276",
+      "oldValue": "1",
+      "newValue": "0",
+      "changedAt": "2026-06-30T09:16:57.219Z",
+      "externalKey": "TESTPC-20260621170637",
+      "patientId": "26036158902",
+      "provider": "Stanford Health Care",
+      "npi": "1871543215",
+      "created": "2026-06-21T20:06:39.391+0300",
+      "updated": "2026-06-30T09:16:17.688Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+**Notes:**
+- Only tracks overpayment value changes (not date or status changes)
+- Context fields (externalKey, patientId, provider, npi, created, updated) are from the current claim data
+- Use `days=3650` to get all historical changes
+
+---
+
 ## Admin API
 
 All admin endpoints require authentication.

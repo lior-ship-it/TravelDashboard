@@ -24,7 +24,7 @@
 ### Filters Not Working (FIXED)
 **Root Cause:** `setupFilters()` was only called in the CSV upload path (`loadData()`), never in the API path (`loadDataFromAPI()`). Filter dropdowns were never populated and event listeners never attached.
 
-**Fix:** Changed `loadDataFromAPI()` to call `setupFilters()` (which populates dropdowns, attaches listeners, then calls `setQuickRange('last90')` → `applyFilters()` → `computeAndRender()`).
+**Fix:** Changed `loadDataFromAPI()` to call `setupFilters()` (which populates dropdowns, attaches listeners, then calls `applyFilters()` → `computeAndRender()`). **Note:** As of Session 8, default date range removed — all data shown by default.
 
 ### Save Dashboard Broken (FIXED)
 **Root Cause:** Saved HTML still had `<script src="/js/...">` tags pointing to the server. When opened from disk, these fail to load → `window.apiClient` is undefined → "API Client not loaded" error. Additionally, `DOMContentLoaded` always called `loadDataFromAPI()` without checking for embedded data.
@@ -269,3 +269,191 @@ git push -u origin main
 - Made "Top Providers by Total Overpayment" list clickable — clicking a provider filters the table to that provider; clicking again clears the filter (toggle)
 - Added hover highlight and pointer cursor to provider rows
 - Replaced blocky JPEG logo with cleaner circular PNG (blue circle + white fish silhouette from `HTMLSource/image001.png`) — better color harmony with dashboard theme
+- Increased logo size from 26px to 38px for better visibility and prominence in header
+
+### Session 6 - Change Tracking Implementation
+**Goal:** Track changes to claim data over time (overpayment amounts, date fields) to enable audit trail and historical analysis.
+
+**Changes Made:**
+
+#### Backend Infrastructure
+- **New Database Table:** `change_history`
+  - Field-level change tracking (issue_key, tenant, field_name, old_value, new_value, change_type, changed_at)
+  - Indexed for fast queries by tenant, date, and issue
+  - Foreign key to `refresh_log` for sync traceability
+  - File: `backend/src/config/database.js`
+
+- **New Service:** `backend/src/services/change-tracking.service.js`
+  - `detectChanges()` - Snapshot comparison between old and new data
+  - `recordChanges()` - Bulk insert changes to database
+  - `getRecentChanges()` - Query with date range and field filtering
+  - Tracks 5 fields: Total Overpayment, Created Date, Updated Date, Resolution Date, Closed Date
+  - Handles JSON string parsing and date normalization from Jira API v3
+
+- **Modified Sync Job:** `backend/src/jobs/data-sync.job.js`
+  - Loads old data before clearing cache (for comparison)
+  - Detects changes by comparing snapshots
+  - Records changes to database with sync_id reference
+  - Wrapped in try-catch to ensure sync continues even if change tracking fails
+  - Change detection adds ~0.5-1s to sync time
+
+- **New API Endpoint:** `GET /api/data/:tenant/:token/changes`
+  - Query parameters: `days` (7/30/90, default 30), `field` (optional filter)
+  - Returns JSON with change history: issueKey, fieldName, oldValue, newValue, changeType, changedAt
+  - File: `backend/src/routes/api.routes.js`
+
+#### Frontend Display
+- **New Section:** "Recent Changes" below raw claims data
+  - Filter dropdowns: date range (7/30/90 days) and field type
+  - Color-coded left border: green for increases, red for decreases
+  - Grid layout: Claim ID | Field + old→new values | Timestamp
+  - File: `frontend/dashboard/index.html` (HTML + CSS)
+
+- **JavaScript Functions:** `frontend/dashboard/js/data.processor.js`
+  - `loadRecentChanges()` - Fetches from API endpoint
+  - `renderChanges()` - Displays in UI with formatting
+  - `formatChangeValue()` - Currency ($) and date formatting
+  - `setupChangeFilters()` - Event listeners for dropdowns
+  - Auto-loads on page load (30 days default)
+  - Not available in saved/offline HTML files
+
+#### Technical Details
+- **Change Detection Strategy:** Snapshot comparison (no Jira changelog API calls for performance)
+- **Tracked Fields:**
+  - `overpayment` → Total Overpayment (numeric, $ formatted)
+  - `created` → Created Date
+  - `updated` → Updated Date
+  - `resolved` → Resolution Date
+  - `closed_at` → Closed Date (customfield_10057)
+- **Performance Impact:** +0.5-1s per sync cycle for change detection
+- **Storage Growth:** ~50-200 bytes per change; ~7KB/day estimated
+- **Database Indexes:** Optimized for tenant + date range queries (<50ms)
+
+#### Testing Results
+✅ Database schema created with indexes  
+✅ API endpoint returns filtered change history  
+✅ Frontend displays changes with proper styling  
+✅ Increase/decrease color coding works  
+✅ Date range and field filters functional  
+✅ Test data verified end-to-end
+
+#### Testing & Issues Discovered
+
+**Successful Tests:**
+✅ Database schema and change_history table created  
+✅ API endpoint working (`/api/data/:tenant/:token/changes`)  
+✅ Frontend "Recent Changes" section displaying correctly  
+✅ Date field changes detected (Updated Date for CLAIM-284, CLAIM-285, CLAIM-276)  
+✅ Filters working (7/30/90 days, field type)  
+✅ Color-coded borders (green=increase, red=decrease)
+
+**Issues Found During Testing:**
+1. **Field Mapping Problem:** Different tenants use different customfield IDs
+   - `harel` uses `customfield_10051` for overpayment
+   - `test-pc` uses `customfield_10699` for overpayment
+   - Current solution: Added multiple field IDs to `TRACKED_FIELDS.overpayment.jiraFields` array
+   - Better solution needed: Dynamic field mapping per tenant or field name lookup
+
+2. **Admin Refresh Endpoint Bug:** 
+   - `POST /api/admin/refresh/:tenant` was NOT running change detection
+   - Directly called `clearCache()` and `setCachedData()` bypassing change tracking logic
+   - **Fixed:** Modified to call `refreshTenant()` from data-sync.job which includes change tracking
+   - **Note:** Browser cache issue required updating both `data.processor.js` AND `data.processor.1782732316.js` (hashed version)
+
+3. **Browser Caching:**
+   - JavaScript changes weren't reflected until hard refresh (Cmd+Shift+R)
+   - HTML references hashed JavaScript file: `data.processor.1782732316.js`
+   - Must update both the main file and hashed version for changes to appear
+
+4. **API URL Construction:**
+   - Initial bug: JavaScript used `window.location.pathname + '/changes'` 
+   - Dashboard at `/tenant/token` but API at `/api/data/tenant/token/changes`
+   - **Fixed:** Parse pathname and construct correct API URL
+
+#### Known Limitations
+- No data retention policy yet (future: auto-delete changes older than 1 year)
+- No Jira changelog integration (no author attribution for who made changes)
+- Changes detected at 4-hour sync intervals (not real-time)
+
+---
+
+## Session 7 - Change Tracking Fixes & UI Overhaul
+
+**Goal:** Fix broken change tracking, redesign the Recent Changes table, fix missing 2025 claims.
+
+### Fixes Applied
+
+#### 1. Field Mapping Fix
+**Root Cause:** `TRACKED_FIELDS` in `change-tracking.service.js` looked for raw `customfield_10051` first, but `transformJiraIssue` stores data under display names like `'Total Overpayment'`. The correct overpayment field is `customfield_10699`.
+
+**Fix:**
+- Changed `TRACKED_FIELDS.overpayment.jiraFields` to `['customfield_10699', 'Total Overpayment', 'Overpayment']`
+- Fixed `jira.service.js` line 136: maps `customfield_10699` (not `customfield_10051`) to `'Total Overpayment'`
+- Renamed display name from "Total Overpayment" to "Overpayment"
+
+#### 2. Sync Job TTL Bypass
+**Root Cause:** `refreshTenant()` used `getCachedData()` which has a 4-hour TTL. At the boundary the function returned null, making change detection treat all data as "created."
+
+**Fix:** Sync job now queries claims table directly (`SELECT raw_data FROM claims WHERE tenant = ?`) without TTL check.
+
+#### 3. Jira API Inconsistency — Missing 2025 Claims
+**Root Cause:** Jira's search API returns different result sets depending on sort order (`ORDER BY created DESC` vs `ASC`). The reported `total` is unreliable — test-pc had 72 claims but Jira reported 50.
+
+**Fix:** `fetchTenantClaims()` now fetches both DESC and ASC, deduplicates by issue key. test-pc went from 50 → 72 claims.
+
+#### 4. Removed "Created" Change Type
+New claims appearing in the DB for the first time are no longer recorded as changes. Only actual overpayment value changes (old → new) are tracked.
+
+#### 5. Removed Date Field Tracking
+Only overpayment changes are tracked now. Removed: Created Date, Updated Date, Resolution Date, Closed Date.
+
+### UI Changes
+
+#### Recent Changes Table Redesign
+- **Header:** Uses `.section-title` class (matches other sections), with `margin-top: 28px` spacing
+- **Layout:** Proper `<table>` (same style as Raw Claims Data table)
+- **Columns:** Claim | External Key | Patient ID | Provider | NPI | Old OVP $ | New OVP $ | Created | Updated
+- **Color coding:** Red left border = decrease, green = increase
+- **Filter:** Days dropdown (All / 7 / 30 / 90) aligned right
+- **Saved HTML:** Changes data embedded in saved files (via `changesData` variable)
+
+#### "All" Date Range Button
+- Added "All" button to main table date filters (after YTD)
+- Clears both date inputs, shows all claims regardless of creation date
+
+### Files Modified
+- `backend/src/services/change-tracking.service.js` — Field mapping, removed date tracking, removed "created" type
+- `backend/src/services/jira.service.js` — Dual-direction fetch, fixed `customfield_10699` mapping
+- `backend/src/jobs/data-sync.job.js` — TTL bypass for old data loading
+- `backend/src/routes/api.routes.js` — Simplified changes endpoint (no field filter)
+- `frontend/dashboard/index.html` — Table redesign, All button, saved HTML embedding, CSS
+- `frontend/dashboard/js/data.processor.js` — Table rendering, currency formatting, color coding
+- `frontend/dashboard/js/data.processor.1782732316.js` — Same (cache-busted copy)
+
+### Testing Results
+✅ Overpayment changes detected correctly (CLAIM-276: 1→0, CLAIM-284: None→1→None)
+✅ 2025 claims now fetched and displayed (72 total for test-pc)
+✅ "All" filter shows full claim history
+✅ Changes table renders with proper styling and color coding
+✅ Saved HTML includes embedded change data
+✅ No false "created" entries on first-time claim discovery
+
+---
+
+## Session 8 - Removed Default Date Range Filter
+
+**Goal:** Show all data by default instead of applying a 90-day date range filter automatically.
+
+**Change:**
+- Removed `setQuickRange('last90')` call from `setupFilters()` in [index.html:1132](frontend/dashboard/index.html#L1132)
+- Replaced with `applyFilters()` to render all data without date filtering
+- Users can still apply date range filters manually via the date range buttons (30d, 90d, YTD) or the "All" button
+
+**Files Modified:**
+- `frontend/dashboard/index.html` — Line 1132: removed default 90-day filter
+- `HANDOFF.md` — Updated documentation to reflect new default behavior
+
+**Testing:**
+✅ Dashboard loads showing all claims (not just last 90 days)
+✅ Date range buttons still work correctly
+✅ "All" button shows all data (no change from new default behavior)

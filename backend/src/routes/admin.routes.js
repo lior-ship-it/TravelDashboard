@@ -1,9 +1,8 @@
 const express = require('express');
 const { validateAdminToken } = require('../middleware/auth.middleware');
 const { generateTenantLink, getAllLinks, revokeLink } = require('../services/link.service');
-const { clearCache, getCacheStats } = require('../services/cache.service');
+const { clearCache, getCacheStats, getCachedData, setCachedData } = require('../services/cache.service');
 const { fetchTenantClaims } = require('../services/jira.service');
-const { setCachedData } = require('../services/cache.service');
 
 const router = express.Router();
 
@@ -70,20 +69,18 @@ router.post('/refresh/:tenant', validateAdminToken, async (req, res, next) => {
 
     console.log(`Admin: Manual refresh requested for tenant: ${tenant}`);
 
-    // Clear cache
-    clearCache(tenant);
+    // Use the refreshTenant function which includes change tracking
+    const { refreshTenant } = require('../jobs/data-sync.job');
+    await refreshTenant(tenant);
 
-    // Fetch fresh data from Jira
-    const claims = await fetchTenantClaims(tenant);
-
-    // Update cache
-    const data = setCachedData(tenant, claims);
+    // Get the updated data
+    const data = getCachedData(tenant);
 
     res.json({
       success: true,
       tenant,
-      recordsFetched: claims.length,
-      lastFetched: data.lastFetched
+      recordsFetched: data ? data.claims.length : 0,
+      lastFetched: data ? data.lastFetched : new Date().toISOString()
     });
 
   } catch (error) {

@@ -267,6 +267,43 @@
   #file-input { display: none; }
   .dashboard-content { display: none; }
   .dashboard-content.visible { display: block; }
+
+  /* Recent Changes */
+  .change-filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    justify-content: flex-end;
+  }
+
+  .change-filters select {
+    background: var(--navy-bg);
+    border: 1px solid var(--navy-border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .change-filters select:hover {
+    background: rgba(255,255,255,0.05);
+  }
+
+  #changes-table tr.ovp-decrease td:first-child {
+    border-left: 3px solid var(--red);
+  }
+  #changes-table tr.ovp-increase td:first-child {
+    border-left: 3px solid var(--green);
+  }
+
+  .no-changes {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+
 </style>
 </head>
 <body>
@@ -316,6 +353,7 @@
         <button onclick="setQuickRange('last30')" class="reset-btn" style="padding:4px 10px; font-size:10px;">Last 30d</button>
         <button onclick="setQuickRange('last90')" class="reset-btn" style="padding:4px 10px; font-size:10px;">Last 90d</button>
         <button onclick="setQuickRange('ytd')" class="reset-btn" style="padding:4px 10px; font-size:10px;">YTD</button>
+        <button onclick="setQuickRange('all')" class="reset-btn" style="padding:4px 10px; font-size:10px;">All</button>
       </div>
       <div class="filter-group">
         <span class="filter-label">Payer</span>
@@ -435,6 +473,37 @@
       <div class="pagination" id="pagination"></div>
     </div>
 
+    <!-- Recent Changes Section -->
+    <div class="section-title" style="margin-top:28px">Recent Overpayment Changes</div>
+    <div class="change-filters">
+      <select id="changeDaysFilter">
+        <option value="all">All</option>
+        <option value="7">Last 7 days</option>
+        <option value="30" selected>Last 30 days</option>
+        <option value="90">Last 90 days</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table id="changes-table">
+          <thead>
+            <tr>
+              <th>Claim</th>
+              <th>External Key</th>
+              <th>Patient ID</th>
+              <th>Provider</th>
+              <th>NPI</th>
+              <th>Old OVP $</th>
+              <th>New OVP $</th>
+              <th>Created</th>
+              <th>Updated</th>
+            </tr>
+          </thead>
+          <tbody id="changesContainer"></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 </main>
 
@@ -455,6 +524,7 @@
 
 // ─── DATA STORE ────────────────────────────────────────────────────────────
 let allData = [];
+let changesData = [];
 let filteredData = [];
 let tableData = [];
 let currentPage = 1;
@@ -542,7 +612,12 @@ function setQuickRange(range) {
 
   let startDate;
 
-  if (range === 'last30') {
+  if (range === 'all') {
+    startInput.value = '';
+    endInput.value = '';
+    applyFilters();
+    return;
+  } else if (range === 'last30') {
     startDate = new Date(today);
     startDate.setDate(startDate.getDate() - 30);
   } else if (range === 'last90') {
@@ -1053,8 +1128,8 @@ function setupFilters() {
   document.getElementById('reset-btn').addEventListener('click', resetFilters);
   document.getElementById('table-search').addEventListener('input', () => { currentPage = 1; renderTable(); });
 
-  // Set default date range to last 90 days
-  setQuickRange('last90');
+  // No default date range - show all data
+  applyFilters();
 }
 
 function applyFilters() {
@@ -1185,11 +1260,22 @@ async function saveDashboard() {
     tag.parentNode.replaceChild(inlineScript, tag);
   });
 
-  // Embed allData into the inline script
+  // Fetch current changes data to embed
+  let changesJson = '[]';
+  try {
+    const pathParts = window.location.pathname.split('/').filter(p => p);
+    const changesResp = await fetch(`/api/data/${pathParts[0]}/${pathParts[1]}/changes?days=3650`);
+    const changesResult = await changesResp.json();
+    if (changesResult.success) changesJson = JSON.stringify(changesResult.changes);
+  } catch (e) {}
+
+  // Embed allData and changesData into the inline script
   const scripts = doc.scripts;
   for (let i = 0; i < scripts.length; i++) {
     if (scripts[i].text.includes('let allData = [];')) {
-      scripts[i].text = scripts[i].text.replace('let allData = [];', 'let allData = ' + JSON.stringify(allData) + ';');
+      scripts[i].text = scripts[i].text
+        .replace('let allData = [];', 'let allData = ' + JSON.stringify(allData) + ';')
+        .replace('let changesData = [];', 'let changesData = ' + changesJson + ';');
       break;
     }
   }
@@ -1223,9 +1309,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('last-updated').textContent = `${allData.length} claims · saved`;
     document.getElementById('count-num').textContent = allData.length;
     setupFilters();
+    if (changesData && changesData.length > 0) {
+      window.DataProcessor.renderChanges(changesData);
+    } else {
+      document.getElementById('changesContainer').innerHTML =
+        '<tr><td colspan="9" class="no-changes">No overpayment changes recorded</td></tr>';
+    }
   } else {
     // Live mode — fetch from API
     await loadDataFromAPI();
+    window.DataProcessor.setupChangeFilters();
+    window.DataProcessor.loadRecentChanges(30);
   }
 });
 </script>

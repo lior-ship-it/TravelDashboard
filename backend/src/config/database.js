@@ -50,6 +50,25 @@ function initDatabase() {
 
     CREATE INDEX IF NOT EXISTS idx_refresh_log_tenant ON refresh_log(tenant);
     CREATE INDEX IF NOT EXISTS idx_refresh_log_timestamp ON refresh_log(timestamp);
+
+    CREATE TABLE IF NOT EXISTS change_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      issue_key TEXT NOT NULL,
+      tenant TEXT NOT NULL,
+      field_name TEXT NOT NULL,
+      field_display_name TEXT,
+      old_value TEXT,
+      new_value TEXT,
+      change_type TEXT NOT NULL,
+      changed_at DATETIME NOT NULL,
+      sync_id INTEGER,
+      FOREIGN KEY (sync_id) REFERENCES refresh_log(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_change_history_issue ON change_history(issue_key);
+    CREATE INDEX IF NOT EXISTS idx_change_history_tenant ON change_history(tenant);
+    CREATE INDEX IF NOT EXISTS idx_change_history_changed_at ON change_history(changed_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_change_history_composite ON change_history(tenant, changed_at DESC);
   `);
 
   console.log('✓ Database initialized at:', DB_PATH);

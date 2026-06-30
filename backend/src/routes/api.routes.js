@@ -2,6 +2,7 @@ const express = require('express');
 const { validateTenantToken } = require('../middleware/auth.middleware');
 const { getCachedData, setCachedData } = require('../services/cache.service');
 const { fetchTenantClaims } = require('../services/jira.service');
+const { getRecentChanges } = require('../services/change-tracking.service');
 
 const router = express.Router();
 
@@ -14,6 +15,32 @@ router.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
   });
+});
+
+/**
+ * Get recent changes for a tenant
+ * Must be defined BEFORE the general /data/:tenant/:token route
+ */
+router.get('/data/:tenant/:token/changes', validateTenantToken, (req, res) => {
+  try {
+    const { tenant } = req.params;
+    const days = parseInt(req.query.days || '30', 10);
+
+    const changes = getRecentChanges(tenant, days);
+
+    res.json({
+      success: true,
+      changes,
+      count: changes.length
+    });
+
+  } catch (error) {
+    console.error('Error fetching changes:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch change history'
+    });
+  }
 });
 
 /**

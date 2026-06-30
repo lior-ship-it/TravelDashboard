@@ -68,44 +68,46 @@ function getTenantName(tenant) {
 async function fetchTenantClaims(tenant) {
   const jira = createJiraClient();
 
-  // JQL query to fetch claims for specific tenant
-  const jql = `
-    project = CLAIM
-    AND "Tenant-Alias" = "${tenant}"
-    ORDER BY created DESC
-  `;
-
-  const allIssues = [];
-  let startAt = 0;
-  const maxResults = 100; // Jira pagination limit
+  const baseJql = `project = CLAIM AND "Tenant-Alias" = "${tenant}"`;
+  const maxResults = 100;
 
   console.log(`Fetching Jira data for tenant: ${tenant}`);
 
   try {
-    // Paginate through all results
-    while (true) {
-      const result = await jira.searchJira(jql, {
-        startAt,
-        maxResults,
-        fields: ['*all'] // Fetch all fields including custom fields
-      });
+    // Fetch both ASC and DESC to work around Jira API inconsistency
+    // where different sort orders return different subsets
+    const issueMap = new Map();
 
-      allIssues.push(...result.issues);
-      console.log(`  Fetched ${result.issues.length} issues (total: ${allIssues.length}/${result.total})`);
+    for (const order of ['DESC', 'ASC']) {
+      const jql = `${baseJql} ORDER BY created ${order}`;
+      let startAt = 0;
 
-      if (result.issues.length < maxResults || allIssues.length >= result.total) {
-        break;
+      while (true) {
+        const result = await jira.searchJira(jql, {
+          startAt,
+          maxResults,
+          fields: ['*all']
+        });
+
+        for (const issue of result.issues) {
+          if (!issueMap.has(issue.key)) {
+            issueMap.set(issue.key, issue);
+          }
+        }
+
+        console.log(`  Fetched ${result.issues.length} issues ${order} (total: ${issueMap.size})`);
+
+        if (result.issues.length < maxResults || startAt + result.issues.length >= result.total) {
+          break;
+        }
+        startAt += maxResults;
       }
-
-      startAt += maxResults;
     }
 
+    const allIssues = Array.from(issueMap.values());
     console.log(`✓ Fetched ${allIssues.length} total issues for ${tenant}`);
 
-    // Transform Jira issues to CSV-like format
-    const transformedClaims = allIssues.map(transformJiraIssue);
-
-    return transformedClaims;
+    return allIssues.map(transformJiraIssue);
 
   } catch (error) {
     console.error(`✗ Error fetching Jira data for ${tenant}:`, error.message);
@@ -133,7 +135,7 @@ function transformJiraIssue(issue) {
 
   // Map all custom fields
   if (fields.customfield_10050) row['Total Allowed'] = fields.customfield_10050;
-  if (fields.customfield_10051) row['Total Overpayment'] = fields.customfield_10051;
+  if (fields.customfield_10699) row['Total Overpayment'] = fields.customfield_10699;
   if (fields.customfield_10052) row['Provider'] = fields.customfield_10052;
   if (fields.customfield_10053) row['Provider NPI'] = fields.customfield_10053;
   if (fields.customfield_10054) row['Payer'] = fields.customfield_10054;
