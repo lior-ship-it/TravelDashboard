@@ -261,6 +261,86 @@ function processData(rawClaims) {
   return enriched;
 }
 
+/**
+ * Load recent changes from API
+ */
+async function loadRecentChanges(days = 30) {
+  try {
+    const pathParts = window.location.pathname.split('/').filter(p => p);
+    const daysParam = days === 'all' ? '3650' : days;
+    const apiUrl = `/api/data/${pathParts[0]}/${pathParts[1]}/changes?days=${daysParam}`;
+
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+
+    if (data.success) {
+      renderChanges(data.changes);
+    } else {
+      document.getElementById('changesContainer').innerHTML =
+        '<tr><td colspan="9" class="no-changes">Failed to load changes</td></tr>';
+    }
+  } catch (error) {
+    console.error('[Changes] Failed to load:', error);
+    document.getElementById('changesContainer').innerHTML =
+      '<tr><td colspan="9" class="no-changes">Error loading changes</td></tr>';
+  }
+}
+
+/**
+ * Render changes as table rows
+ */
+function renderChanges(changes) {
+  const container = document.getElementById('changesContainer');
+  if (!container) return;
+
+  if (!changes || changes.length === 0) {
+    container.innerHTML = '<tr><td colspan="9" class="no-changes">No overpayment changes detected in this period</td></tr>';
+    return;
+  }
+
+  const fmtCurrency = (v) => {
+    if (!v || v === 'null') return '—';
+    const n = parseFloat(v);
+    return isNaN(n) ? v : '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const fmtDate = (v) => {
+    if (!v) return '—';
+    try { return new Date(v).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+    catch { return v; }
+  };
+
+  container.innerHTML = changes.map(c => {
+    const oldNum = parseFloat(c.oldValue) || 0;
+    const newNum = parseFloat(c.newValue) || 0;
+    const cls = newNum < oldNum ? 'ovp-decrease' : newNum > oldNum ? 'ovp-increase' : '';
+    return `
+    <tr class="${cls}">
+      <td>${c.issueKey}</td>
+      <td>${c.externalKey || '—'}</td>
+      <td>${c.patientId || '—'}</td>
+      <td>${c.provider || '—'}</td>
+      <td>${c.npi || '—'}</td>
+      <td>${fmtCurrency(c.oldValue)}</td>
+      <td>${fmtCurrency(c.newValue)}</td>
+      <td>${fmtDate(c.created)}</td>
+      <td>${fmtDate(c.updated)}</td>
+    </tr>`;
+  }).join('');
+}
+
+/**
+ * Setup change filter listener
+ */
+function setupChangeFilters() {
+  const daysFilter = document.getElementById('changeDaysFilter');
+  if (daysFilter) {
+    daysFilter.addEventListener('change', (e) => {
+      loadRecentChanges(e.target.value);
+    });
+  }
+}
+
 // Export functions
 window.DataProcessor = {
   processData,
@@ -268,6 +348,9 @@ window.DataProcessor = {
   getTenantName,
   getTenantRate,
   cleanCommentText,
+  loadRecentChanges,
+  renderChanges,
+  setupChangeFilters,
   TENANT_RATES,
   TENANT_NAMES
 };

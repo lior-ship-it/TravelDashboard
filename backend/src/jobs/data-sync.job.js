@@ -1,7 +1,8 @@
 const cron = require('node-cron');
 const { fetchTenantClaims } = require('../services/jira.service');
-const { setCachedData, clearCache } = require('../services/cache.service');
+const { setCachedData, clearCache, getCachedData } = require('../services/cache.service');
 const { getDatabase } = require('../config/database');
+const { detectChanges, recordChanges } = require('../services/change-tracking.service');
 
 // List of all tenants to sync
 const TENANTS = ['test-pc', 'ds', 'harel', 'fnx'];
@@ -18,17 +19,49 @@ async function refreshTenant(tenant) {
   let status = 'success';
   let errorMessage = null;
   let recordsFetched = 0;
+  let syncId = null;
 
   try {
-    // Clear old cache
+    // 1. Load current data from database (BEFORE clearing)
+    // Query directly without TTL check — we need the previous snapshot regardless of age
+    const oldRows = db.prepare(
+      'SELECT raw_data FROM claims WHERE tenant = ? ORDER BY created_at DESC'
+    ).all(tenant);
+    const oldClaims = oldRows.map(r => JSON.parse(r.raw_data));
+
+    // 2. Fetch fresh data from Jira
+    const newClaims = await fetchTenantClaims(tenant);
+    recordsFetched = newClaims.length;
+
+    // 3. Create refresh_log entry FIRST to get sync_id
+    const logStmt = db.prepare(`
+      INSERT INTO refresh_log (tenant, records_fetched, status, error_message, timestamp)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const logResult = logStmt.run(tenant, recordsFetched, 'in_progress', null, new Date().toISOString());
+    syncId = logResult.lastInsertRowid;
+
+    // 4. Detect changes (compare old vs new)
+    try {
+      const changes = detectChanges(tenant, oldClaims, newClaims);
+
+      // 5. Record changes to change_history table
+      if (changes.length > 0) {
+        recordChanges(changes, syncId);
+        console.log(`[Sync Job] Recorded ${changes.length} field changes`);
+      } else {
+        console.log(`[Sync Job] No changes detected`);
+      }
+    } catch (changeError) {
+      console.error(`[Sync Job] Warning: Change tracking failed but continuing sync:`, changeError.message);
+    }
+
+    // 6. Clear old cache and update with new data
     clearCache(tenant);
+    setCachedData(tenant, newClaims);
 
-    // Fetch fresh data from Jira
-    const claims = await fetchTenantClaims(tenant);
-    recordsFetched = claims.length;
-
-    // Update cache
-    setCachedData(tenant, claims);
+    // 7. Update refresh_log to success
+    db.prepare('UPDATE refresh_log SET status = ? WHERE id = ?').run('success', syncId);
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(`[Sync Job] ✓ Refreshed ${tenant}: ${recordsFetched} records in ${duration}s`);
@@ -37,23 +70,22 @@ async function refreshTenant(tenant) {
     status = 'error';
     errorMessage = error.message;
 
+    // Update refresh_log to error if we created an entry
+    if (syncId) {
+      db.prepare('UPDATE refresh_log SET status = ?, error_message = ? WHERE id = ?')
+        .run('error', errorMessage, syncId);
+    } else {
+      // Create error log entry if we didn't get to create one
+      const stmt = db.prepare(`
+        INSERT INTO refresh_log (tenant, records_fetched, status, error_message, timestamp)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      stmt.run(tenant, recordsFetched, status, errorMessage, new Date().toISOString());
+    }
+
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     console.error(`[Sync Job] ✗ Failed to refresh ${tenant} after ${duration}s:`, error.message);
   }
-
-  // Log to refresh_log table
-  const stmt = db.prepare(`
-    INSERT INTO refresh_log (tenant, records_fetched, status, error_message, timestamp)
-    VALUES (?, ?, ?, ?, ?)
-  `);
-
-  stmt.run(
-    tenant,
-    recordsFetched,
-    status,
-    errorMessage,
-    new Date().toISOString()
-  );
 }
 
 /**
