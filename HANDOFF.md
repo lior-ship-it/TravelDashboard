@@ -1,6 +1,6 @@
 # TravelDash Project Handoff
 
-**Date:** June 29, 2026  
+**Date:** June 30, 2026  
 **Status:** WORKING  
 **Repo:** https://github.com/lior-ship-it/TravelDashboard  
 **Type:** Automated Jira Dashboard with Secure Tenant Links
@@ -264,3 +264,8 @@ git push -u origin main
 - Added `_claimCategory` array/dedup handling in TABLE_COLS
 - Cleaned up old versioned files and all debug logging
 - Pushed to GitHub: https://github.com/lior-ship-it/TravelDashboard
+
+### Session 5 - UI Polish
+- Made "Top Providers by Total Overpayment" list clickable — clicking a provider filters the table to that provider; clicking again clears the filter (toggle)
+- Added hover highlight and pointer cursor to provider rows
+- Replaced blocky JPEG logo with cleaner circular PNG (blue circle + white fish silhouette from `HTMLSource/image001.png`) — better color harmony with dashboard theme
