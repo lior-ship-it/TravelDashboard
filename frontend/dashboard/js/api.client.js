@@ -80,6 +80,27 @@ class APIClient {
   }
 
   /**
+   * Force refresh data from Jira (bypasses cache)
+   */
+  async refresh() {
+    if (!this.tenant || !this.token) {
+      throw new Error('API client not initialized');
+    }
+
+    const url = `${this.baseURL}/api/data/${this.tenant}/${this.token}/refresh`;
+
+    const response = await fetch(url, { method: 'POST' });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    this.lastFetched = data.lastFetched;
+    return data;
+  }
+
+  /**
    * Get formatted "last updated" string
    */
   getLastUpdatedText() {

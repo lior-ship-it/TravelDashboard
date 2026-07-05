@@ -584,7 +584,28 @@ async function loadDataFromAPI() {
 }
 
 async function refreshData() {
-  await loadDataFromAPI();
+  const btn = document.querySelector('[onclick="refreshData()"]');
+  const originalText = btn.textContent;
+  btn.textContent = '⏳ Refreshing...';
+  btn.disabled = true;
+
+  try {
+    const data = await window.apiClient.refresh();
+    const claims = data.claims || data;
+    allData = window.DataProcessor.processData(claims);
+    setupFilters(allData);
+    applyFilters();
+
+    const indicator = document.getElementById('lastUpdated');
+    if (indicator) indicator.textContent = window.apiClient.getLastUpdatedText();
+
+    if (typeof loadRecentChanges === 'function') loadRecentChanges();
+  } catch (error) {
+    showError(`Refresh failed: ${error.message}`);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
 }
 
 function exportFilteredData() {

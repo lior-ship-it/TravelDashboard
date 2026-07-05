@@ -3,7 +3,7 @@
 Automated Jira-powered dashboard for tenant claims tracking with secure per-tenant links.
 
 ## Features
-- 🔄 Automatic Jira data sync (every 4 hours)
+- 🔄 Automatic Jira data sync (every 4 hours) + manual refresh button
 - 🔗 Secure per-tenant shareable links
 - 📊 Interactive visualizations (Chart.js)
 - 📅 Flexible date range filtering (30d / 90d / YTD / All)

@@ -44,6 +44,24 @@ router.get('/data/:tenant/:token/changes', validateTenantToken, (req, res) => {
 });
 
 /**
+ * Force refresh tenant data from Jira
+ */
+router.post('/data/:tenant/:token/refresh', validateTenantToken, async (req, res, next) => {
+  try {
+    const tenant = req.tenant;
+    console.log(`API: Manual refresh requested for tenant: ${tenant}`);
+
+    const { refreshTenant } = require('../jobs/data-sync.job');
+    await refreshTenant(tenant);
+
+    const data = getCachedData(tenant);
+    res.json(data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * Get tenant data
  * - Checks cache first
  * - Falls back to Jira API if cache is stale

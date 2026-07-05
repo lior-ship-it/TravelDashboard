@@ -155,6 +155,34 @@ Fetch recent overpayment changes for a tenant, enriched with claim context.
 
 ---
 
+### Force Refresh Tenant Data
+
+Trigger an immediate Jira refresh for the tenant, bypassing the 4-hour cache. Used by the dashboard Refresh button.
+
+**Endpoint:** `POST /api/data/:tenant/:token/refresh`
+
+**Authentication:** Tenant access token (in URL)
+
+**Parameters:**
+- `tenant` (path) - Tenant identifier
+- `token` (path) - 64-character access token
+
+**Response:**
+```json
+{
+  "claims": [...],
+  "lastFetched": "2026-07-05T11:09:57.997Z",
+  "fromCache": true
+}
+```
+
+**Notes:**
+- Fetches fresh data from Jira regardless of cache age
+- Detects and records overpayment changes (same as scheduled sync)
+- Returns the updated cached data after refresh completes
+
+---
+
 ## Admin API
 
 All admin endpoints require authentication.

@@ -469,6 +469,34 @@ Only overpayment changes are tracked now. Removed: Created Date, Updated Date, R
 
 ---
 
+### Session 9 - Live Refresh Button & Maintenance (July 5, 2026)
+
+**Goals:** Wire refresh button to trigger real Jira data pull; reset change history; update Jira API token.
+
+#### Changes Made
+
+1. **Refresh Button Now Triggers Real Jira Sync**
+   - New endpoint: `POST /api/data/:tenant/:token/refresh`
+   - Calls `refreshTenant()` — same logic as the 4-hour scheduled sync
+   - Frontend button shows "⏳ Refreshing..." loading state while working
+   - On success: re-renders table, updates filters, reloads recent changes
+   - Files: `api.routes.js`, `api.client.js`, `api.client.1782732316.js`, `index.html`
+
+2. **Reset Change History**
+   - Cleared all 10 rows from `change_history` table (test-pc: 6, ds: 2, harel: 2)
+   - Fresh tracking starts from next sync cycle
+
+3. **Updated Jira API Token**
+   - Replaced expired token in `backend/.env`
+
+#### Testing Results
+✅ Refresh endpoint returns 73 claims for test-pc in ~1.6s
+✅ Button loading state displays and restores correctly
+✅ Change detection runs during refresh (same as scheduled sync)
+✅ Recent changes table reloads after refresh
+
+---
+
 ## Deployment Status
 
 **PR #1 Merged:** 2026-06-30
