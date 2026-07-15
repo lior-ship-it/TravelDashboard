@@ -115,6 +115,14 @@ function detectChanges(tenant, oldClaims, newClaims) {
       const newValue = extractFieldValue(newClaim, fieldConfig.jiraFields);
 
       if (valuesAreDifferent(oldValue, newValue, fieldConfig.type)) {
+        const normOld = normalizeValue(oldValue, fieldConfig.type);
+        const normNew = normalizeValue(newValue, fieldConfig.type);
+
+        // Skip changes from null — only track value-to-value changes
+        if (normOld === null) {
+          continue;
+        }
+
         changes.push({
           issueKey,
           tenant,
