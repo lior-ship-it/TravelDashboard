@@ -6,7 +6,7 @@ Automated Jira-powered dashboard for tenant claims tracking with secure per-tena
 - 🔄 Automatic Jira data sync (every 4 hours) + manual refresh button
 - 🔗 Secure per-tenant shareable links
 - 📊 Interactive visualizations (Chart.js)
-- 📅 Flexible date range filtering (30d / 90d / YTD / All)
+- 📅 Month dropdown filter + quick-range buttons (Last Month / Last Quarter / YTD / All)
 - 📥 Export filtered data as CSV
 - 🖱️ Click-to-filter on charts
 - 🌙 Modern dark theme UI

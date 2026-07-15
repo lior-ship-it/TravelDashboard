@@ -497,9 +497,9 @@ Only overpayment changes are tracked now. Removed: Created Date, Updated Date, R
 
 ---
 
-### Session 10 - Change Tracking Filter & Save Filename (July 15, 2026)
+### Session 10 - Change Tracking, Save Filename & Date Filters (July 15, 2026)
 
-**Goals:** Filter out noise from change tracking; improve saved dashboard filename.
+**Goals:** Filter noise from change tracking; improve saved filename; overhaul date filtering UX.
 
 #### Changes Made
 
@@ -511,9 +511,24 @@ Only overpayment changes are tracked now. Removed: Created Date, Updated Date, R
 2. **Save Dashboard Filename Update**
    - New format: `TenantName - YYYY-MM-DD - BSDashboard.html`
    - Previously: `Bluespine Dashboard - TenantName.html`
-   - File: `frontend/dashboard/index.html`
 
-3. **Reset change_history table** — cleared all 12 rows (ds: 6, harel: 2, test-pc: 4) for fresh tracking
+3. **Month Dropdown Selector** (replaces start/end date inputs)
+   - Dropdown lists calendar months derived from actual data (earliest created claim → current month)
+   - Defaults to "All" on load
+   - Fixed timezone bug: uses local date formatting instead of `toISOString()` (UTC shift caused Jan to show Dec data)
+
+4. **Quick-Range Buttons Reworked**
+   - "Last 30d" → **Last Month** (full calendar month, 1st to last day; syncs dropdown)
+   - "Last 90d" → **Last Quarter** (full previous quarter)
+   - **YTD** and **Last Quarter** show range label in dropdown (e.g. "Jan - Jul 2026") but hidden from selectable list
+   - "All" button syncs dropdown back to All
+
+5. **Recent Overpayment Changes** — defaults to "All" instead of "Last Month"
+
+6. **Reset change_history table** — cleared all rows for fresh tracking with new rules
+
+#### PR
+- PR #3: https://github.com/lior-ship-it/TravelDashboard/pull/3 (open, not yet merged)
 
 ---
 
