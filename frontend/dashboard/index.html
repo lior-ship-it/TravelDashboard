@@ -635,7 +635,8 @@ function setDropdownCustomLabel(label) {
   if (!opt) {
     opt = document.createElement('option');
     opt.value = 'custom';
-    select.insertBefore(opt, select.querySelector('option[value="all"]').nextSibling);
+    opt.hidden = true;
+    select.insertBefore(opt, select.firstChild);
   }
   opt.textContent = label;
   select.value = 'custom';
