@@ -626,6 +626,10 @@ function showError(message) {
 }
 
 // ─── DATE RANGE HELPERS ─────────────────────────────────────────────────────
+function formatLocalDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function setQuickRange(range) {
   const today = new Date();
   const startInput = document.getElementById('filter-start-date');
@@ -648,8 +652,8 @@ function setQuickRange(range) {
     startDate = new Date(today.getFullYear(), 0, 1);
   }
 
-  startInput.value = startDate.toISOString().split('T')[0];
-  endInput.value = today.toISOString().split('T')[0];
+  startInput.value = formatLocalDate(startDate);
+  endInput.value = formatLocalDate(today);
   document.getElementById('filter-month').value = 'custom';
 
   applyFilters();
@@ -664,10 +668,9 @@ function setMonthRange(value) {
     endInput.value = '';
   } else {
     const [year, month] = value.split('-').map(Number);
-    const start = new Date(year, month - 1, 1);
-    const end = new Date(year, month, 0); // last day of month
-    startInput.value = start.toISOString().split('T')[0];
-    endInput.value = end.toISOString().split('T')[0];
+    const lastDay = new Date(year, month, 0).getDate();
+    startInput.value = `${year}-${String(month).padStart(2,'0')}-01`;
+    endInput.value = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
   }
   applyFilters();
 }
