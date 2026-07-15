@@ -350,8 +350,8 @@
         </select>
       </div>
       <div class="filter-group">
-        <button onclick="setQuickRange('last30')" class="reset-btn" style="padding:4px 10px; font-size:10px;">Last 30d</button>
-        <button onclick="setQuickRange('last90')" class="reset-btn" style="padding:4px 10px; font-size:10px;">Last 90d</button>
+        <button onclick="setQuickRange('lastMonth')" class="reset-btn" style="padding:4px 10px; font-size:10px;">Last Month</button>
+        <button onclick="setQuickRange('lastQuarter')" class="reset-btn" style="padding:4px 10px; font-size:10px;">Last Quarter</button>
         <button onclick="setQuickRange('ytd')" class="reset-btn" style="padding:4px 10px; font-size:10px;">YTD</button>
         <button onclick="setQuickRange('all')" class="reset-btn" style="padding:4px 10px; font-size:10px;">All</button>
       </div>
@@ -479,8 +479,8 @@
       <select id="changeDaysFilter">
         <option value="all">All</option>
         <option value="7">Last 7 days</option>
-        <option value="30" selected>Last 30 days</option>
-        <option value="90">Last 90 days</option>
+        <option value="30" selected>Last Month</option>
+        <option value="90">Last Quarter</option>
       </select>
     </div>
     <div class="table-wrap">
@@ -636,24 +636,26 @@ function setQuickRange(range) {
   const endInput = document.getElementById('filter-end-date');
 
   let startDate;
+  let endDate = today;
 
   if (range === 'all') {
     startInput.value = '';
     endInput.value = '';
     applyFilters();
     return;
-  } else if (range === 'last30') {
-    startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - 30);
-  } else if (range === 'last90') {
-    startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - 90);
+  } else if (range === 'lastMonth') {
+    startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+  } else if (range === 'lastQuarter') {
+    const qStart = Math.floor((today.getMonth()) / 3) * 3;
+    startDate = new Date(today.getFullYear(), qStart - 3, 1);
+    endDate = new Date(today.getFullYear(), qStart, 0);
   } else if (range === 'ytd') {
     startDate = new Date(today.getFullYear(), 0, 1);
   }
 
   startInput.value = formatLocalDate(startDate);
-  endInput.value = formatLocalDate(today);
+  endInput.value = formatLocalDate(endDate);
   document.getElementById('filter-month').value = 'custom';
 
   applyFilters();
