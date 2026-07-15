@@ -629,6 +629,18 @@ function formatLocalDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+function setDropdownCustomLabel(label) {
+  const select = document.getElementById('filter-month');
+  let opt = select.querySelector('option[value="custom"]');
+  if (!opt) {
+    opt = document.createElement('option');
+    opt.value = 'custom';
+    select.insertBefore(opt, select.querySelector('option[value="all"]').nextSibling);
+  }
+  opt.textContent = label;
+  select.value = 'custom';
+}
+
 function setQuickRange(range) {
   const today = new Date();
   const startInput = document.getElementById('filter-start-date');
@@ -652,8 +664,12 @@ function setQuickRange(range) {
     const qStart = Math.floor((today.getMonth()) / 3) * 3;
     startDate = new Date(today.getFullYear(), qStart - 3, 1);
     endDate = new Date(today.getFullYear(), qStart, 0);
+    const label = `${startDate.toLocaleDateString('en-US',{month:'short'})} - ${endDate.toLocaleDateString('en-US',{month:'short', year:'numeric'})}`;
+    setDropdownCustomLabel(label);
   } else if (range === 'ytd') {
     startDate = new Date(today.getFullYear(), 0, 1);
+    const label = `Jan - ${today.toLocaleDateString('en-US',{month:'short', year:'numeric'})}`;
+    setDropdownCustomLabel(label);
   }
 
   startInput.value = formatLocalDate(startDate);
@@ -663,6 +679,10 @@ function setQuickRange(range) {
 }
 
 function setMonthRange(value) {
+  const select = document.getElementById('filter-month');
+  const customOpt = select.querySelector('option[value="custom"]');
+  if (customOpt && value !== 'custom') customOpt.remove();
+
   const startInput = document.getElementById('filter-start-date');
   const endInput = document.getElementById('filter-end-date');
 
