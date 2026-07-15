@@ -675,8 +675,14 @@ function setMonthRange(value) {
 function populateMonthDropdown() {
   const select = document.getElementById('filter-month');
   const now = new Date();
-  const start = new Date(2024, 9, 1); // Oct 2024
 
+  // Find earliest created date in the data
+  let earliest = now;
+  allData.forEach(r => {
+    if (r._created && r._created < earliest) earliest = r._created;
+  });
+
+  const start = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
   const months = [];
   let cursor = new Date(now.getFullYear(), now.getMonth(), 1);
   while (cursor >= start) {
