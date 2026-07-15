@@ -640,6 +640,7 @@ function setQuickRange(range) {
   if (range === 'all') {
     startInput.value = '';
     endInput.value = '';
+    document.getElementById('filter-month').value = 'all';
     applyFilters();
     return;
   } else if (range === 'lastMonth') {
