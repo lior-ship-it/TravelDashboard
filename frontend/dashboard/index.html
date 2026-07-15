@@ -341,13 +341,13 @@
     </div>
 
     <div class="filters-bar" id="filters-bar" style="margin:-28px -36px 28px -36px; padding:12px 36px;">
+      <input type="hidden" id="filter-start-date">
+      <input type="hidden" id="filter-end-date">
       <div class="filter-group">
-        <span class="filter-label">From</span>
-        <input type="date" id="filter-start-date" onchange="applyFilters()" style="min-width:140px;">
-      </div>
-      <div class="filter-group">
-        <span class="filter-label">To</span>
-        <input type="date" id="filter-end-date" onchange="applyFilters()" style="min-width:140px;">
+        <span class="filter-label">Month</span>
+        <select id="filter-month" onchange="setMonthRange(this.value)" style="min-width:140px; padding:6px 8px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:12px;">
+          <option value="all">All Time</option>
+        </select>
       </div>
       <div class="filter-group">
         <button onclick="setQuickRange('last30')" class="reset-btn" style="padding:4px 10px; font-size:10px;">Last 30d</button>
@@ -650,8 +650,44 @@ function setQuickRange(range) {
 
   startInput.value = startDate.toISOString().split('T')[0];
   endInput.value = today.toISOString().split('T')[0];
+  document.getElementById('filter-month').value = 'custom';
 
   applyFilters();
+}
+
+function setMonthRange(value) {
+  const startInput = document.getElementById('filter-start-date');
+  const endInput = document.getElementById('filter-end-date');
+
+  if (value === 'all') {
+    startInput.value = '';
+    endInput.value = '';
+  } else {
+    const [year, month] = value.split('-').map(Number);
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 0); // last day of month
+    startInput.value = start.toISOString().split('T')[0];
+    endInput.value = end.toISOString().split('T')[0];
+  }
+  applyFilters();
+}
+
+function populateMonthDropdown() {
+  const select = document.getElementById('filter-month');
+  const now = new Date();
+  const start = new Date(2024, 9, 1); // Oct 2024
+
+  const months = [];
+  let cursor = new Date(now.getFullYear(), now.getMonth(), 1);
+  while (cursor >= start) {
+    const val = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+    const label = cursor.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    months.push({ val, label });
+    cursor.setMonth(cursor.getMonth() - 1);
+  }
+
+  select.innerHTML = '<option value="all">All Time</option>' +
+    months.map(m => `<option value="${m.val}">${m.label}</option>`).join('');
 }
 
 // ─── USE DATA PROCESSOR FUNCTIONS (avoid duplicate declarations) ─────────
@@ -1193,6 +1229,7 @@ function resetFilters() {
   // Clear date inputs
   document.getElementById('filter-start-date').value = '';
   document.getElementById('filter-end-date').value = '';
+  document.getElementById('filter-month').value = 'all';
 
   // Clear other filters
   ['filter-payer','filter-provider','filter-status','filter-overpayment', 'filter-type-of-bill'].forEach(id => {
@@ -1323,6 +1360,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const dashboardContent = document.getElementById('dashboard-content');
   uploadZone.style.display = 'none';
   dashboardContent.classList.add('visible');
+  populateMonthDropdown();
 
   if (typeof allData !== 'undefined' && allData.length > 0) {
     // Saved file with embedded data — re-enrich to reconstitute Date objects from serialized strings
