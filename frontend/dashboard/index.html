@@ -1145,6 +1145,7 @@ window.goPage = function(p) {
 
 // ─── FILTER SETUP ────────────────────────────────────────────────────────────
 function setupFilters() {
+  populateMonthDropdown();
   let payers      = [...new Set(allData.map(r => r._payer).filter(Boolean))].sort();
   const providers = [...new Set(allData.map(r => r._npi || r._provider).filter(Boolean))].sort();
   const statuses  = [...new Set(allData.map(r => r._status).filter(Boolean))].sort();
@@ -1366,7 +1367,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const dashboardContent = document.getElementById('dashboard-content');
   uploadZone.style.display = 'none';
   dashboardContent.classList.add('visible');
-  populateMonthDropdown();
 
   if (typeof allData !== 'undefined' && allData.length > 0) {
     // Saved file with embedded data — re-enrich to reconstitute Date objects from serialized strings
