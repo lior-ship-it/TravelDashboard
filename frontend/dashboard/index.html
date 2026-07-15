@@ -346,7 +346,6 @@
       <div class="filter-group">
         <span class="filter-label">Month</span>
         <select id="filter-month" onchange="setMonthRange(this.value)" style="min-width:140px; padding:6px 8px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:12px;">
-          <option value="all">All Time</option>
         </select>
       </div>
       <div class="filter-group">
@@ -665,15 +664,10 @@ function setMonthRange(value) {
   const startInput = document.getElementById('filter-start-date');
   const endInput = document.getElementById('filter-end-date');
 
-  if (value === 'all') {
-    startInput.value = '';
-    endInput.value = '';
-  } else {
-    const [year, month] = value.split('-').map(Number);
-    const lastDay = new Date(year, month, 0).getDate();
-    startInput.value = `${year}-${String(month).padStart(2,'0')}-01`;
-    endInput.value = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
-  }
+  const [year, month] = value.split('-').map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  startInput.value = `${year}-${String(month).padStart(2,'0')}-01`;
+  endInput.value = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
   applyFilters();
 }
 
@@ -697,8 +691,9 @@ function populateMonthDropdown() {
     cursor.setMonth(cursor.getMonth() - 1);
   }
 
-  select.innerHTML = '<option value="all">All Time</option>' +
-    months.map(m => `<option value="${m.val}">${m.label}</option>`).join('');
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  select.innerHTML = months.map(m => `<option value="${m.val}"${m.val === currentMonth ? ' selected' : ''}>${m.label}</option>`).join('');
+  setMonthRange(currentMonth);
 }
 
 // ─── USE DATA PROCESSOR FUNCTIONS (avoid duplicate declarations) ─────────
@@ -1238,10 +1233,11 @@ function applyFilters() {
 }
 
 function resetFilters() {
-  // Clear date inputs
-  document.getElementById('filter-start-date').value = '';
-  document.getElementById('filter-end-date').value = '';
-  document.getElementById('filter-month').value = 'all';
+  // Reset to current month
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  document.getElementById('filter-month').value = currentMonth;
+  setMonthRange(currentMonth);
 
   // Clear other filters
   ['filter-payer','filter-provider','filter-status','filter-overpayment', 'filter-type-of-bill'].forEach(id => {
