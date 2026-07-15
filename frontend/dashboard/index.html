@@ -665,10 +665,15 @@ function setMonthRange(value) {
   const startInput = document.getElementById('filter-start-date');
   const endInput = document.getElementById('filter-end-date');
 
-  const [year, month] = value.split('-').map(Number);
-  const lastDay = new Date(year, month, 0).getDate();
-  startInput.value = `${year}-${String(month).padStart(2,'0')}-01`;
-  endInput.value = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  if (value === 'all') {
+    startInput.value = '';
+    endInput.value = '';
+  } else {
+    const [year, month] = value.split('-').map(Number);
+    const lastDay = new Date(year, month, 0).getDate();
+    startInput.value = `${year}-${String(month).padStart(2,'0')}-01`;
+    endInput.value = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  }
   applyFilters();
 }
 
@@ -692,9 +697,8 @@ function populateMonthDropdown() {
     cursor.setMonth(cursor.getMonth() - 1);
   }
 
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  select.innerHTML = months.map(m => `<option value="${m.val}"${m.val === currentMonth ? ' selected' : ''}>${m.label}</option>`).join('');
-  setMonthRange(currentMonth);
+  select.innerHTML = '<option value="all" selected>All</option>' +
+    months.map(m => `<option value="${m.val}">${m.label}</option>`).join('');
 }
 
 // ─── USE DATA PROCESSOR FUNCTIONS (avoid duplicate declarations) ─────────
@@ -1234,11 +1238,10 @@ function applyFilters() {
 }
 
 function resetFilters() {
-  // Reset to current month
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  document.getElementById('filter-month').value = currentMonth;
-  setMonthRange(currentMonth);
+  // Reset date filter
+  document.getElementById('filter-start-date').value = '';
+  document.getElementById('filter-end-date').value = '';
+  document.getElementById('filter-month').value = 'all';
 
   // Clear other filters
   ['filter-payer','filter-provider','filter-status','filter-overpayment', 'filter-type-of-bill'].forEach(id => {
