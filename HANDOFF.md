@@ -497,6 +497,26 @@ Only overpayment changes are tracked now. Removed: Created Date, Updated Date, R
 
 ---
 
+### Session 10 - Change Tracking Filter & Save Filename (July 15, 2026)
+
+**Goals:** Filter out noise from change tracking; improve saved dashboard filename.
+
+#### Changes Made
+
+1. **Change Tracking: Skip null → any value transitions**
+   - Only records changes when there was a previous value (value-to-value changes)
+   - Prevents noise from fields being populated for the first time
+   - File: `backend/src/services/change-tracking.service.js`
+
+2. **Save Dashboard Filename Update**
+   - New format: `TenantName - YYYY-MM-DD - BSDashboard.html`
+   - Previously: `Bluespine Dashboard - TenantName.html`
+   - File: `frontend/dashboard/index.html`
+
+3. **Reset change_history table** — cleared all 12 rows (ds: 6, harel: 2, test-pc: 4) for fresh tracking
+
+---
+
 ## Deployment Status
 
 **PR #1 Merged:** 2026-06-30

@@ -1312,7 +1312,8 @@ async function saveDashboard() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Bluespine Dashboard - ${tenantName}.html`;
+  const today = new Date().toISOString().slice(0, 10);
+  a.download = `${tenantName} - ${today} - BSDashboard.html`;
   a.click();
   URL.revokeObjectURL(url);
 }
