@@ -2,7 +2,7 @@
 
 **Date:** June 30, 2026  
 **Status:** PRODUCTION READY ✅  
-**Last Updated:** Session 8 (June 30, 2026)  
+**Last Updated:** Session 11 (July 27, 2026)  
 **Repo:** https://github.com/lior-ship-it/TravelDashboard  
 **Type:** Automated Jira Dashboard with Secure Tenant Links + Change Tracking
 
@@ -156,9 +156,17 @@ PORT=3000
 ## Key Commands
 
 ### Start Server
+Server runs automatically via macOS LaunchAgent (auto-starts on login, restarts on crash).
 ```bash
-cd /Users/lior/Documents/TravelDash/backend
-node src/server.js
+# Check status
+launchctl list | grep traveldash
+
+# Manual start/stop
+launchctl start com.traveldash.server
+launchctl stop com.traveldash.server
+
+# Plist location
+~/Library/LaunchAgents/com.traveldash.server.plist
 ```
 
 ### Test API
@@ -550,3 +558,28 @@ Only overpayment changes are tracked now. Removed: Created Date, Updated Date, R
 ✅ Saved HTML exports include change history data
 
 **Production Ready:** All documented features are implemented and tested.
+
+---
+
+### Session 11 - Always-On Server & Data Cleanup (July 27, 2026)
+
+**Goals:** Make server persistent across reboots; clean up stale null-to-zero change tracking records.
+
+#### Changes Made
+
+1. **macOS LaunchAgent for Always-On Server**
+   - Created `~/Library/LaunchAgents/com.traveldash.server.plist`
+   - `RunAtLoad: true` — starts on login
+   - `KeepAlive: true` — restarts if process dies
+   - `ThrottleInterval: 10` — waits 10s between restart attempts
+   - Logs to `server.log` in project root
+
+2. **Cleaned Stale Change History Records**
+   - Deleted 2 records with `old_value = NULL` (CLAIM-306: null→0, CLAIM-296: null→1501.42)
+   - These were inserted by a stale server process running code from before the July 15 null filter fix
+   - The `normOld === null` guard in `change-tracking.service.js:122` is correct and prevents new occurrences
+
+#### Files Modified
+- `~/Library/LaunchAgents/com.traveldash.server.plist` (new — not in repo)
+- `README.md` — Added LaunchAgent usage docs
+- `HANDOFF.md` — Updated Key Commands section, added Session 11

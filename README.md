@@ -24,6 +24,20 @@ cp .env.example .env
 npm start
 ```
 
+**Auto-start (macOS):**  
+The server runs as a LaunchAgent — starts on login, restarts if it crashes.
+```bash
+# Status
+launchctl list | grep traveldash
+
+# Manual stop/start
+launchctl stop com.traveldash.server
+launchctl start com.traveldash.server
+
+# Remove auto-start
+launchctl unload ~/Library/LaunchAgents/com.traveldash.server.plist
+```
+
 **2. Generate Tenant Link**
 ```bash
 cd backend
