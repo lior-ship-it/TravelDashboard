@@ -6,7 +6,7 @@ Automated Jira-powered dashboard for tenant claims tracking with secure per-tena
 - 🔄 Automatic Jira data sync (every 4 hours) + manual refresh button
 - 🔗 Secure per-tenant shareable links
 - 📊 Interactive visualizations (Chart.js)
-- 📅 Flexible date range filtering (30d / 90d / YTD / All)
+- 📅 Month dropdown filter + quick-range buttons (Last Month / Last Quarter / YTD / All)
 - 📥 Export filtered data as CSV
 - 🖱️ Click-to-filter on charts
 - 🌙 Modern dark theme UI
@@ -22,6 +22,20 @@ npm install
 cp .env.example .env
 # Edit .env with your Jira credentials
 npm start
+```
+
+**Auto-start (macOS):**  
+The server runs as a LaunchAgent — starts on login, restarts if it crashes.
+```bash
+# Status
+launchctl list | grep traveldash
+
+# Manual stop/start
+launchctl stop com.traveldash.server
+launchctl start com.traveldash.server
+
+# Remove auto-start
+launchctl unload ~/Library/LaunchAgents/com.traveldash.server.plist
 ```
 
 **2. Generate Tenant Link**

@@ -2,7 +2,7 @@
 
 **Date:** June 30, 2026  
 **Status:** PRODUCTION READY ✅  
-**Last Updated:** Session 8 (June 30, 2026)  
+**Last Updated:** Session 11 (July 27, 2026)  
 **Repo:** https://github.com/lior-ship-it/TravelDashboard  
 **Type:** Automated Jira Dashboard with Secure Tenant Links + Change Tracking
 
@@ -156,9 +156,17 @@ PORT=3000
 ## Key Commands
 
 ### Start Server
+Server runs automatically via macOS LaunchAgent (auto-starts on login, restarts on crash).
 ```bash
-cd /Users/lior/Documents/TravelDash/backend
-node src/server.js
+# Check status
+launchctl list | grep traveldash
+
+# Manual start/stop
+launchctl start com.traveldash.server
+launchctl stop com.traveldash.server
+
+# Plist location
+~/Library/LaunchAgents/com.traveldash.server.plist
 ```
 
 ### Test API
@@ -497,9 +505,9 @@ Only overpayment changes are tracked now. Removed: Created Date, Updated Date, R
 
 ---
 
-### Session 10 - Change Tracking Filter & Save Filename (July 15, 2026)
+### Session 10 - Change Tracking, Save Filename & Date Filters (July 15, 2026)
 
-**Goals:** Filter out noise from change tracking; improve saved dashboard filename.
+**Goals:** Filter noise from change tracking; improve saved filename; overhaul date filtering UX.
 
 #### Changes Made
 
@@ -511,9 +519,24 @@ Only overpayment changes are tracked now. Removed: Created Date, Updated Date, R
 2. **Save Dashboard Filename Update**
    - New format: `TenantName - YYYY-MM-DD - BSDashboard.html`
    - Previously: `Bluespine Dashboard - TenantName.html`
-   - File: `frontend/dashboard/index.html`
 
-3. **Reset change_history table** — cleared all 12 rows (ds: 6, harel: 2, test-pc: 4) for fresh tracking
+3. **Month Dropdown Selector** (replaces start/end date inputs)
+   - Dropdown lists calendar months derived from actual data (earliest created claim → current month)
+   - Defaults to "All" on load
+   - Fixed timezone bug: uses local date formatting instead of `toISOString()` (UTC shift caused Jan to show Dec data)
+
+4. **Quick-Range Buttons Reworked**
+   - "Last 30d" → **Last Month** (full calendar month, 1st to last day; syncs dropdown)
+   - "Last 90d" → **Last Quarter** (full previous quarter)
+   - **YTD** and **Last Quarter** show range label in dropdown (e.g. "Jan - Jul 2026") but hidden from selectable list
+   - "All" button syncs dropdown back to All
+
+5. **Recent Overpayment Changes** — defaults to "All" instead of "Last Month"
+
+6. **Reset change_history table** — cleared all rows for fresh tracking with new rules
+
+#### PR
+- PR #3: https://github.com/lior-ship-it/TravelDashboard/pull/3 (open, not yet merged)
 
 ---
 
@@ -535,3 +558,28 @@ Only overpayment changes are tracked now. Removed: Created Date, Updated Date, R
 ✅ Saved HTML exports include change history data
 
 **Production Ready:** All documented features are implemented and tested.
+
+---
+
+### Session 11 - Always-On Server & Data Cleanup (July 27, 2026)
+
+**Goals:** Make server persistent across reboots; clean up stale null-to-zero change tracking records.
+
+#### Changes Made
+
+1. **macOS LaunchAgent for Always-On Server**
+   - Created `~/Library/LaunchAgents/com.traveldash.server.plist`
+   - `RunAtLoad: true` — starts on login
+   - `KeepAlive: true` — restarts if process dies
+   - `ThrottleInterval: 10` — waits 10s between restart attempts
+   - Logs to `server.log` in project root
+
+2. **Cleaned Stale Change History Records**
+   - Deleted 2 records with `old_value = NULL` (CLAIM-306: null→0, CLAIM-296: null→1501.42)
+   - These were inserted by a stale server process running code from before the July 15 null filter fix
+   - The `normOld === null` guard in `change-tracking.service.js:122` is correct and prevents new occurrences
+
+#### Files Modified
+- `~/Library/LaunchAgents/com.traveldash.server.plist` (new — not in repo)
+- `README.md` — Added LaunchAgent usage docs
+- `HANDOFF.md` — Updated Key Commands section, added Session 11
